@@ -48,6 +48,20 @@ interface WhatsAppMessage {
   location?: { latitude: number; longitude: number; name?: string; address?: string }
   reaction?: { message_id: string; emoji: string }
   /**
+   * Populated by Meta when it can't deliver the message body — polls,
+   * view-once media, live location, and other types the Cloud API
+   * doesn't expose (delivered as `type: 'unsupported'`). The content
+   * itself is unrecoverable: it never arrives and can't be fetched
+   * later, so this human-readable reason is the only signal about what
+   * the customer actually sent.
+   */
+  errors?: Array<{
+    code?: number
+    title?: string
+    message?: string
+    error_data?: { details?: string }
+  }>
+  /**
    * Set when the customer taps a button or list row on an interactive
    * message we sent. `button_reply.id` / `list_reply.id` is whatever id
    * we put on the button/row when sending — the Flows engine uses this
@@ -1041,11 +1055,27 @@ async function parseMessageContent(
       }
     }
 
-    default:
+    default: {
+      // A block so the reason lookup can use consts. Meta ships a
+      // human-readable explanation in `errors` for bodies it can't
+      // deliver (polls, view-once media, live location); since the
+      // body itself never arrives, that reason is all we can show.
+      // `error_data.details` is the most specific, then `title`, then
+      // `message`. Treat blank strings as absent so we fall through to
+      // the generic label rather than rendering an empty reason.
+      const error = message.errors?.[0]
+      const reason =
+        error?.error_data?.details?.trim() ||
+        error?.title?.trim() ||
+        error?.message?.trim() ||
+        null
       return {
         ...empty,
-        contentText: `[Unsupported message type: ${message.type}]`,
+        contentText: reason
+          ? `[Unsupported message (${message.type}): ${reason}]`
+          : `[Unsupported message type: ${message.type}]`,
       }
+    }
   }
 }
 
