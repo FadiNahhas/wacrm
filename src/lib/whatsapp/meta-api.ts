@@ -225,6 +225,11 @@ export interface SendTextMessageArgs {
   contextMessageId?: string
 }
 
+// WhatsApp only ever previews the FIRST link in a message, so we just
+// need to know whether the body contains one at all — no need to
+// extract or count matches.
+const HAS_URL = /https?:\/\/[^\s]+/i
+
 /**
  * Send a free-form WhatsApp text message.
  * Only works inside the 24-hour customer service window.
@@ -239,7 +244,11 @@ export async function sendTextMessage(
     recipient_type: 'individual',
     to,
     type: 'text',
-    text: { body: text },
+    // `preview_url` is what makes WhatsApp fetch the target page's
+    // Open Graph tags and render a link card. Meta ignores the flag
+    // when the body has no link, so sending it unconditionally is
+    // harmless — we still gate on HAS_URL to keep the payload honest.
+    text: { body: text, preview_url: HAS_URL.test(text) },
   }
   if (contextMessageId) {
     body.context = { message_id: contextMessageId }
