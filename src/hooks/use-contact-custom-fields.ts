@@ -37,6 +37,38 @@ function priorityRank(fieldName: string): number {
 }
 
 /**
+ * Writes one contact's value for one custom field. Non-empty values upsert
+ * on the table's existing `UNIQUE(contact_id, custom_field_id)` constraint
+ * (supabase/migrations/001_initial_schema.sql); clearing to empty deletes
+ * the row instead, matching the "empty means no row" rule `fetchFields`
+ * already applies when reading. Exported standalone (not a hook) so it's
+ * testable without rendering — this repo's vitest config has no jsdom.
+ */
+export async function writeCustomFieldValue(
+  contactId: string,
+  fieldId: string,
+  newValue: string,
+): Promise<boolean> {
+  const supabase = createClient();
+  const trimmed = newValue.trim();
+
+  if (!trimmed) {
+    const { error } = await supabase
+      .from("contact_custom_values")
+      .delete()
+      .eq("contact_id", contactId)
+      .eq("custom_field_id", fieldId);
+    return !error;
+  }
+
+  const { error } = await supabase.from("contact_custom_values").upsert(
+    { contact_id: contactId, custom_field_id: fieldId, value: trimmed },
+    { onConflict: "contact_id,custom_field_id" },
+  );
+  return !error;
+}
+
+/**
  * Fetches the account's custom-field catalogue plus this contact's values
  * and joins them client-side (same query shape as
  * `contact-detail-view.tsx`'s `fetchCustomFields`), so the chat header and
@@ -106,5 +138,22 @@ export function useContactCustomFields(contactId: string | null | undefined) {
     (f) => priorityRank(f.field_name) < PRIORITY_FIELD_MATCHERS.length,
   );
 
-  return { fields, priorityFields, loading };
+  const updateFieldValue = useCallback(
+    async (fieldId: string, newValue: string): Promise<boolean> => {
+      if (!contactId) return false;
+      const ok = await writeCustomFieldValue(contactId, fieldId, newValue);
+      if (!ok) return false;
+
+      const trimmed = newValue.trim();
+      setFields((prev) =>
+        trimmed
+          ? prev.map((f) => (f.id === fieldId ? { ...f, value: trimmed } : f))
+          : prev.filter((f) => f.id !== fieldId),
+      );
+      return true;
+    },
+    [contactId],
+  );
+
+  return { fields, priorityFields, loading, updateFieldValue };
 }
