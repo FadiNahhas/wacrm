@@ -281,6 +281,7 @@
     },
     "sidebar": {
       "contactInfo": "연락처 정보",
+      "customFields": "맞춤 필드",
       "tags": "태그",
       "notes": "메모",
       "deals": "딜",

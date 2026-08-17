@@ -10,6 +10,7 @@ import {
 } from "@/lib/inbox/conversations";
 import type { Conversation, Message, Contact, ConversationStatus } from "@/types";
 import { useRealtime } from "@/hooks/use-realtime";
+import { useContactCustomFields } from "@/hooks/use-contact-custom-fields";
 import { ConversationList } from "@/components/inbox/conversation-list";
 import { MessageThread } from "@/components/inbox/message-thread";
 import { ContactSidebar } from "@/components/inbox/contact-sidebar";
@@ -48,6 +49,12 @@ function InboxPageInner() {
     useState<Conversation | null>(null);
   const [activeContact, setActiveContact] = useState<Contact | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+  // Fetched once here (keyed on the active contact) and shared by both the
+  // thread header and the contact sidebar, so switching conversations
+  // doesn't trigger two independent custom-fields queries for the same
+  // contact.
+  const { fields: customFields, priorityFields: priorityCustomFields } =
+    useContactCustomFields(activeContact?.id ?? null);
   const [whatsappConnected, setWhatsappConnected] = useState<boolean | null>(
     null
   );
@@ -612,6 +619,7 @@ function InboxPageInner() {
           <MessageThread
             conversation={activeConversation}
             contact={activeContact}
+            priorityCustomFields={priorityCustomFields}
             messages={messages}
             onMessagesLoaded={handleMessagesLoaded}
             onNewMessage={handleNewMessage}
@@ -632,7 +640,7 @@ function InboxPageInner() {
             toggle — which is itself desktop-only — never affects it. */}
         {contactPanelOpen && (
           <div className="hidden lg:block">
-            <ContactSidebar contact={activeContact} />
+            <ContactSidebar contact={activeContact} customFields={customFields} />
           </div>
         )}
       </div>

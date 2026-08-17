@@ -281,6 +281,7 @@
     },
     "sidebar": {
       "contactInfo": "Contact info",
+      "customFields": "Custom fields",
       "tags": "Tags",
       "notes": "Notes",
       "deals": "Deals",

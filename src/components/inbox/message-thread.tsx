@@ -17,6 +17,7 @@ import type {
   Profile,
   InteractiveMessagePayload,
 } from "@/types";
+import type { ContactCustomFieldEntry } from "@/hooks/use-contact-custom-fields";
 import {
   MessageSquare,
   ChevronDown,
@@ -64,6 +65,14 @@ interface ReplyDraft {
 interface MessageThreadProps {
   conversation: Conversation | null;
   contact: Contact | null;
+  /**
+   * The contact's "identifying" custom fields (role, school, town — see
+   * the priority matchers in `useContactCustomFields`), shown inline next
+   * to the name so agents don't have to open the sidebar to know who
+   * they're talking to. Fetched once by the page and shared with the
+   * contact sidebar to avoid a duplicate query per contact switch.
+   */
+  priorityCustomFields?: ContactCustomFieldEntry[];
   messages: Message[];
   onMessagesLoaded: (messages: Message[]) => void;
   onNewMessage: (message: Message) => void;
@@ -152,6 +161,7 @@ const DOODLE_BG_CLASSES =
 export function MessageThread({
   conversation,
   contact,
+  priorityCustomFields = [],
   messages,
   onMessagesLoaded,
   onNewMessage,
@@ -922,6 +932,20 @@ export function MessageThread({
           <div className="min-w-0">
             <h2 className="truncate text-sm font-semibold text-foreground">{displayName}</h2>
             <p className="truncate text-xs text-muted-foreground">{contact.phone}</p>
+            {priorityCustomFields.length > 0 && (
+              <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                {priorityCustomFields.map((f) => (
+                  <span
+                    key={f.id}
+                    dir="auto"
+                    title={`${f.field_name}: ${f.value}`}
+                    className="max-w-28 truncate text-[11px] text-muted-foreground sm:max-w-40"
+                  >
+                    {f.value}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
           {/* Session timer badge — hidden on the narrowest phones so
               the name + back arrow keep their room. */}

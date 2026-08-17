@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import type { Contact, Deal, ContactNote, Tag } from "@/types";
+import type { ContactCustomFieldEntry } from "@/hooks/use-contact-custom-fields";
 import {
   Phone,
   Mail,
@@ -15,17 +16,26 @@ import {
   DollarSign,
   StickyNote,
   Plus,
+  SlidersHorizontal,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { CustomFieldValue } from "./custom-field-value";
 import { format } from "date-fns";
 import { useTranslations } from "next-intl";
 
 interface ContactSidebarProps {
   contact: Contact | null;
+  /**
+   * This contact's custom fields, already sorted with the "identifying"
+   * ones (role/school/town) first. Fetched once by the page (shared with
+   * the thread header) rather than queried again here, so switching
+   * conversations doesn't fire two custom-fields queries per contact.
+   */
+  customFields?: ContactCustomFieldEntry[];
 }
 
-export function ContactSidebar({ contact }: ContactSidebarProps) {
+export function ContactSidebar({ contact, customFields = [] }: ContactSidebarProps) {
   const tSidebar = useTranslations("Inbox.sidebar");
   const tThread = useTranslations("Inbox.messageThread");
 
@@ -180,6 +190,43 @@ export function ContactSidebar({ contact }: ContactSidebarProps) {
 
           {/* Divider */}
           <div className="my-4 border-t border-border" />
+
+          {/* Custom Fields — account-defined, rendered generically from
+              whatever the schema returns. Always visible (not collapsed)
+              so the priority fields (role/school/town) never require an
+              extra click to see. */}
+          {customFields.length > 0 && (
+            <>
+              <div>
+                <div className="flex items-center gap-2 px-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  <SlidersHorizontal className="h-3 w-3" />
+                  {tSidebar("customFields")}
+                </div>
+                <div className="mt-2 space-y-1.5">
+                  {customFields.map((f) => (
+                    <div
+                      key={f.id}
+                      className="flex items-center justify-between gap-2 px-1"
+                    >
+                      <span
+                        dir="auto"
+                        className="truncate text-xs text-muted-foreground"
+                      >
+                        {f.field_name}
+                      </span>
+                      <CustomFieldValue
+                        value={f.value}
+                        className="max-w-32 shrink-0 truncate"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Divider */}
+              <div className="my-4 border-t border-border" />
+            </>
+          )}
 
           {/* Tags */}
           <div>
