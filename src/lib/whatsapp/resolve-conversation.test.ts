@@ -27,6 +27,11 @@ interface Script {
   existingConversationByCall?: (({ id: string } | null))[];
   insertedConversationId?: string; // conversations insert -> single
   insertConversationError?: { code?: string } | null;
+  /** Test-supplied sink: every `contacts` patch is pushed here, so a
+   *  test can assert that an operator-owned name was left alone. */
+  contactUpdateSink?: Record<string, unknown>[];
+  /** Test-supplied sink for `contacts` insert rows. */
+  contactInsertSink?: Record<string, unknown>[];
 }
 
 function makeDb(script: Script): SupabaseClient {
@@ -37,12 +42,14 @@ function makeDb(script: Script): SupabaseClient {
 
   const builder: Record<string, unknown> = {
     select: () => builder,
-    insert: () => {
+    insert: (row: Record<string, unknown>) => {
       mode = 'insert';
+      if (table === 'contacts') script.contactInsertSink?.push(row);
       return builder;
     },
-    update: () => {
+    update: (patch: Record<string, unknown>) => {
       mode = 'update';
+      if (table === 'contacts') script.contactUpdateSink?.push(patch);
       return builder;
     },
     eq: () => builder,
@@ -206,5 +213,80 @@ describe('resolveConversationByPhone', () => {
       contactId: 'c1',
       contactCreated: false,
     });
+  });
+});
+
+// ============================================================
+// `name` on the send payload is a hint, not a rename.
+//
+// POST /api/v1/messages accepts an optional `name` alongside `to`. It
+// used to be written straight over `contacts.name`, so a chatty
+// integration passing its own label for a number quietly destroyed the
+// operator-entered name — the same failure mode as the inbound webhook
+// mirroring WhatsApp pushnames.
+// ============================================================
+describe('resolveConversationByPhone: operator-owned name is not clobbered', () => {
+  it('leaves an existing non-empty name alone', async () => {
+    const contactUpdateSink: Record<string, unknown>[] = [];
+    const db = makeDb({
+      config: { user_id: 'owner-1' },
+      contactCandidates: [
+        { id: 'c1', phone: '14155550123', name: 'מנהלת בית הספר' },
+      ],
+      existingConversation: { id: 'cv1' },
+      contactUpdateSink,
+    });
+
+    const res = await resolveConversationByPhone(
+      db,
+      'acct',
+      '+14155550123',
+      'Some Integration Label'
+    );
+
+    expect(res.contactId).toBe('c1');
+    expect(contactUpdateSink).toHaveLength(0);
+  });
+
+  it('fills a null or blank name', async () => {
+    for (const emptyish of [null, '', '   ']) {
+      const contactUpdateSink: Record<string, unknown>[] = [];
+      const db = makeDb({
+        config: { user_id: 'owner-1' },
+        contactCandidates: [
+          { id: 'c1', phone: '14155550123', name: emptyish },
+        ],
+        existingConversation: { id: 'cv1' },
+        contactUpdateSink,
+      });
+
+      await resolveConversationByPhone(db, 'acct', '+14155550123', 'Ada');
+
+      expect(contactUpdateSink).toHaveLength(1);
+      expect(contactUpdateSink[0]).toMatchObject({ name: 'Ada' });
+    }
+  });
+
+  it('still names a contact it creates itself', async () => {
+    // Creation is not an overwrite — there is no operator name to lose,
+    // and this `name` comes from an API caller, not from WhatsApp.
+    const contactInsertSink: Record<string, unknown>[] = [];
+    const db = makeDb({
+      config: { user_id: 'owner-1' },
+      contactCandidates: [],
+      insertedContactId: 'c-new',
+      existingConversation: { id: 'cv1' },
+      contactInsertSink,
+    });
+
+    const res = await resolveConversationByPhone(
+      db,
+      'acct',
+      '+14155550123',
+      'Ada'
+    );
+
+    expect(res.contactCreated).toBe(true);
+    expect(contactInsertSink[0]).toMatchObject({ name: 'Ada' });
   });
 });

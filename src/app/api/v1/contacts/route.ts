@@ -56,7 +56,11 @@ export async function GET(request: Request) {
       .eq('account_id', ctx.accountId);
 
     if (search) {
-      query = query.or(`name.ilike.*${search}*,phone.ilike.*${search}*`);
+      // wa_profile_name is searchable too — for a contact no operator has
+      // named, it is the only name anyone has seen (see display-name.ts).
+      query = query.or(
+        `name.ilike.*${search}*,wa_profile_name.ilike.*${search}*,phone.ilike.*${search}*`
+      );
     }
 
     if (tag) {

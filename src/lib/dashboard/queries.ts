@@ -1,5 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import {
+  contactDisplayName,
+  type DisplayNameContact,
+} from '@/lib/contacts/display-name'
+import {
   daysAgoStart,
   DOW_SHORT_MON_FIRST,
   lastNDayKeys,
@@ -272,13 +276,13 @@ export async function loadActivity(db: DB, limit = 20): Promise<ActivityItem[]> 
   const [msgs, contacts, deals, broadcasts, autoLogs] = await Promise.all([
     db
       .from('messages')
-      .select('id, content_text, sender_type, created_at, conversation_id, conversations(contact_id, contacts(name, phone))')
+      .select('id, content_text, sender_type, created_at, conversation_id, conversations(contact_id, contacts(name, wa_profile_name, phone))')
       .eq('sender_type', 'customer')
       .order('created_at', { ascending: false })
       .limit(10),
     db
       .from('contacts')
-      .select('id, name, phone, created_at')
+      .select('id, name, wa_profile_name, phone, created_at')
       .order('created_at', { ascending: false })
       .limit(10),
     db
@@ -293,7 +297,7 @@ export async function loadActivity(db: DB, limit = 20): Promise<ActivityItem[]> 
       .limit(5),
     db
       .from('automation_logs')
-      .select('id, trigger_event, status, created_at, automation:automations(name), contact:contacts(name, phone)')
+      .select('id, trigger_event, status, created_at, automation:automations(name), contact:contacts(name, wa_profile_name, phone)')
       .order('created_at', { ascending: false })
       .limit(10),
   ])
@@ -308,13 +312,13 @@ export async function loadActivity(db: DB, limit = 20): Promise<ActivityItem[]> 
     created_at: string
     conversation_id: string
     conversations:
-      | { contact_id: string | null; contacts: { name: string | null; phone: string }[] | { name: string | null; phone: string } | null }[]
-      | { contact_id: string | null; contacts: { name: string | null; phone: string }[] | { name: string | null; phone: string } | null }
+      | { contact_id: string | null; contacts: DisplayNameContact[] | DisplayNameContact | null }[]
+      | { contact_id: string | null; contacts: DisplayNameContact[] | DisplayNameContact | null }
       | null
   }>) {
     const conv = Array.isArray(m.conversations) ? m.conversations[0] : m.conversations
     const contact = Array.isArray(conv?.contacts) ? conv?.contacts[0] : conv?.contacts
-    const who = contact?.name || contact?.phone || 'Unknown'
+    const who = contactDisplayName(contact, 'Unknown')
     items.push({
       id: `msg-${m.id}`,
       kind: 'message',
@@ -324,11 +328,11 @@ export async function loadActivity(db: DB, limit = 20): Promise<ActivityItem[]> 
     })
   }
 
-  for (const c of (contacts.data ?? []) as Array<{ id: string; name: string | null; phone: string; created_at: string }>) {
+  for (const c of (contacts.data ?? []) as Array<DisplayNameContact & { id: string; created_at: string }>) {
     items.push({
       id: `contact-${c.id}`,
       kind: 'contact',
-      text: `New contact: ${c.name || c.phone}`,
+      text: `New contact: ${contactDisplayName(c)}`,
       at: c.created_at,
       href: '/contacts',
     })
@@ -378,11 +382,11 @@ export async function loadActivity(db: DB, limit = 20): Promise<ActivityItem[]> 
     status: string
     created_at: string
     automation: { name: string }[] | { name: string } | null
-    contact: { name: string | null; phone: string }[] | { name: string | null; phone: string } | null
+    contact: DisplayNameContact[] | DisplayNameContact | null
   }>) {
     const automation = Array.isArray(l.automation) ? l.automation[0] : l.automation
     const contact = Array.isArray(l.contact) ? l.contact[0] : l.contact
-    const who = contact?.name || contact?.phone || 'a contact'
+    const who = contactDisplayName(contact, 'a contact')
     const autoName = automation?.name || 'Automation'
     items.push({
       id: `auto-${l.id}`,

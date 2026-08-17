@@ -1,6 +1,7 @@
 "use client";
 
 import type { Deal, PipelineStage } from "@/types";
+import { contactDisplayName } from "@/lib/contacts/display-name";
 import { Calendar, Check, X } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
 import { useTranslations } from "next-intl";
@@ -28,7 +29,7 @@ function initials(name?: string, fallback?: string) {
 
 export function DealCard({ deal, stage, onEdit, isOverlay }: DealCardProps) {
   const t = useTranslations("Pipelines.card");
-  const contactLabel = deal.contact?.name || deal.contact?.phone || t("noContact");
+  const contactLabel = contactDisplayName(deal.contact, t("noContact"));
   const assigneeLabel = deal.assignee?.full_name || null;
 
   return (
@@ -75,7 +76,7 @@ export function DealCard({ deal, stage, onEdit, isOverlay }: DealCardProps) {
       {/* Contact row */}
       <div className="mt-2 flex items-center gap-2">
         <span className="flex h-5 w-5 items-center justify-center rounded-full bg-muted text-[10px] font-semibold text-foreground">
-          {initials(deal.contact?.name, deal.contact?.phone)}
+          {initials(contactDisplayName(deal.contact))}
         </span>
         <span className="truncate text-xs text-muted-foreground">{contactLabel}</span>
       </div>

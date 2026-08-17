@@ -22,7 +22,11 @@ export function normalizeKey(phone: string): string {
 export interface ExistingContact {
   id: string;
   phone: string;
+  /** Operator-owned. Callers must not overwrite a non-empty value —
+   *  see `@/lib/contacts/display-name` for the ownership rules. */
   name?: string | null;
+  /** WhatsApp profile name (pushname); where inbound handlers write. */
+  wa_profile_name?: string | null;
   [key: string]: unknown;
 }
 

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Contact, CustomField, MessageTemplate } from '@/types';
+import { contactDisplayName } from '@/lib/contacts/display-name';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -208,7 +209,9 @@ export function Step3Personalize({
           replacement = mapping.value;
         } else if (mapping.type === 'field' && mapping.value) {
           const fieldMap: Record<string, string | undefined> = {
-            name: contact.name,
+            // Same fallback the send path uses (use-broadcast-sending),
+            // so the preview matches what actually goes out.
+            name: contactDisplayName(contact),
             phone: contact.phone,
             email: contact.email,
             company: contact.company,

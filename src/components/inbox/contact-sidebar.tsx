@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
+import { contactDisplayName } from "@/lib/contacts/display-name";
 import type { Contact, Deal, ContactNote, Tag } from "@/types";
 import type { ContactCustomFieldEntry } from "@/hooks/use-contact-custom-fields";
 import {
@@ -150,7 +151,7 @@ export function ContactSidebar({
     );
   }
 
-  const displayName = contact.name || contact.phone;
+  const displayName = contactDisplayName(contact);
   const initials = displayName.charAt(0).toUpperCase();
 
   return (

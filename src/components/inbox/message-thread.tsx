@@ -7,6 +7,7 @@ import { usePresence } from "@/hooks/use-presence";
 import { PresenceDot } from "@/components/presence/presence-dot";
 import { presenceLabel } from "@/lib/presence";
 import { cn } from "@/lib/utils";
+import { contactDisplayName } from "@/lib/contacts/display-name";
 import type {
   Conversation,
   Message,
@@ -761,7 +762,7 @@ export function MessageThread({
     return map;
   }, [reactions]);
 
-  const contactDisplayName = contact?.name || contact?.phone || "Customer";
+  const customerLabel = contactDisplayName(contact, "Customer");
 
   // Author label for a quoted message: "You" when we sent the parent,
   // contact name when the customer sent it.
@@ -769,9 +770,9 @@ export function MessageThread({
     (m: Message): string => {
       const isAgentMsg =
         m.sender_type === "agent" || m.sender_type === "bot";
-      return isAgentMsg ? "You" : contactDisplayName;
+      return isAgentMsg ? "You" : customerLabel;
     },
-    [contactDisplayName],
+    [customerLabel],
   );
 
   const handleStartReply = useCallback(
@@ -889,7 +890,7 @@ export function MessageThread({
     );
   }
 
-  const displayName = contact.name || contact.phone;
+  const displayName = contactDisplayName(contact);
   const messageGroups = groupMessagesByDate(messages);
   const currentStatus = STATUS_OPTIONS.find(
     (s) => s.value === conversation.status
@@ -1136,8 +1137,8 @@ export function MessageThread({
                       ? {
                           authorLabel:
                             parent.sender_type === "agent" || parent.sender_type === "bot"
-                              ? t("me") 
-                              : contact?.name || contact?.phone || "Unknown",
+                              ? t("me")
+                              : contactDisplayName(contact, "Unknown"),
                           preview: buildReplyPreview(parent, tQuote),
                         }
                       : null;
@@ -1220,7 +1221,7 @@ export function MessageThread({
         items={mediaGallery}
         activeId={mediaMessageId}
         onActiveIdChange={handleMediaChange}
-        contactLabel={contactDisplayName}
+        contactLabel={customerLabel}
       />
     </div>
   );

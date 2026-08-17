@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Broadcast, BroadcastRecipient, RecipientStatus } from '@/types';
+import { contactDisplayName } from '@/lib/contacts/display-name';
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -216,7 +217,7 @@ export default function BroadcastDetailPage() {
       t('table.error'),
     ];
     const rows = recipients.map((r) => [
-      r.contact?.name ?? '',
+      contactDisplayName(r.contact),
       r.contact?.phone ?? '',
       r.status,
       r.sent_at ?? '',
@@ -597,7 +598,7 @@ export default function BroadcastDetailPage() {
                   return (
                     <TableRow key={recipient.id} className="border-border">
                       <TableCell className="font-medium text-foreground">
-                        {recipient.contact?.name ?? 'Unknown'}
+                        {contactDisplayName(recipient.contact, 'Unknown')}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
                         {recipient.contact?.phone ?? '-'}

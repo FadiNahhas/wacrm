@@ -91,7 +91,14 @@ export async function resolveConversationByPhone(
   const existing = await findExistingContact(db, accountId, sanitized);
   if (existing) {
     contactId = existing.id;
-    if (name && name !== existing.name) {
+    // `name` here is a convenience hint on the send payload ("send to
+    // +9725…, they're called X"), not an explicit rename request — the
+    // caller who genuinely wants to rename someone has
+    // PATCH /api/v1/contacts/:id for that. Treating the hint as a write
+    // let a chatty integration quietly overwrite operator-owned names,
+    // the same class of bug as the inbound webhook mirroring pushnames.
+    // So: fill an empty name, never clobber an existing one.
+    if (name && !existing.name?.trim()) {
       await db
         .from('contacts')
         .update({ name, updated_at: new Date().toISOString() })

@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { format, formatDistanceToNow } from "date-fns";
 
 import { useTranslations } from "next-intl";
+import { contactDisplayName } from "@/lib/contacts/display-name";
 
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -226,8 +227,7 @@ function RunCard({
 }) {
   const meta = STATUS_META[run.status];
   const StatusIcon = meta.icon;
-  const contactLabel =
-    run.contact?.name?.trim() || run.contact?.phone || t("unknownContact");
+  const contactLabel = contactDisplayName(run.contact, t("unknownContact"));
   const duration = run.ended_at
     ? formatDistanceToNow(new Date(run.ended_at), {
         addSuffix: false,

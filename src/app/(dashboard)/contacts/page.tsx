@@ -4,6 +4,10 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import type { Contact, Tag, ContactTag } from '@/types';
+import {
+  contactDisplayName,
+  hasOperatorName,
+} from '@/lib/contacts/display-name';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -162,7 +166,12 @@ export default function ContactsPage() {
 
       if (term) {
         const like = `%${term}%`;
-        query = query.or(`name.ilike.${like},phone.ilike.${like},email.ilike.${like}`);
+        // wa_profile_name is searchable too: for a contact nobody has
+        // named yet, their WhatsApp profile name is the only name the
+        // operator has ever seen, so it's what they'll type.
+        query = query.or(
+          `name.ilike.${like},wa_profile_name.ilike.${like},phone.ilike.${like},email.ilike.${like}`
+        );
       }
 
       const { data, count: exactCount, error } = await query;
@@ -597,11 +606,21 @@ export default function ContactsPage() {
                     <Checkbox
                       checked={selected.has(contact.id)}
                       onCheckedChange={() => toggleSelect(contact.id)}
-                      aria-label={`Select ${contact.name || contact.phone}`}
+                      aria-label={`Select ${contactDisplayName(contact)}`}
                     />
                   </TableCell>
                   <TableCell className="text-foreground font-medium">
-                    {contact.name || <span className="text-muted-foreground italic">{t('unnamed')}</span>}
+                    {/* No operator-entered name yet — show the WhatsApp
+                        profile name (italic, to mark it provisional) and
+                        only fall all the way back to "unnamed" when the
+                        contact has never told us a name either. */}
+                    {hasOperatorName(contact) ? (
+                      contact.name
+                    ) : (
+                      <span className="text-muted-foreground italic">
+                        {contact.wa_profile_name?.trim() || t('unnamed')}
+                      </span>
+                    )}
                   </TableCell>
                   <TableCell className="text-muted-foreground font-mono text-xs">
                     {contact.phone}

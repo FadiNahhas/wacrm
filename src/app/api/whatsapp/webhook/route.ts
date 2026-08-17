@@ -1161,13 +1161,36 @@ async function findOrCreateContact(
   )
 
   if (existingContact) {
-    // Update name if it changed
-    if (name && name !== existingContact.name) {
+    // The pushname is the contact's OWN WhatsApp profile name. It is
+    // contact-controlled and changes whenever they edit their profile,
+    // so it belongs in `wa_profile_name` and NEVER in `name`:
+    // `contacts.name` is operator-owned (the real names maintained in
+    // the ops spreadsheet), and blindly mirroring the pushname into it
+    // silently wiped those names every time someone messaged us.
+    //
+    // We still fill `name` when it is null/empty — a contact nobody has
+    // named yet loses nothing by getting a provisional one — but an
+    // existing non-empty name always wins.
+    const patch: Record<string, string> = {}
+    if (name && name !== existingContact.wa_profile_name) {
+      patch.wa_profile_name = name
+    }
+    if (name && !existingContact.name?.trim()) {
+      patch.name = name
+    }
+
+    if (Object.keys(patch).length > 0) {
+      patch.updated_at = new Date().toISOString()
       await supabaseAdmin()
         .from('contacts')
-        .update({ name, updated_at: new Date().toISOString() })
+        .update(patch)
         .eq('id', existingContact.id)
+      // Keep the row we hand back in step with what we just wrote, so
+      // downstream automation/flow dispatch sees the same values a
+      // re-read would.
+      Object.assign(existingContact, patch)
     }
+
     return { contact: existingContact, wasCreated: false }
   }
 
@@ -1175,13 +1198,22 @@ async function findOrCreateContact(
   // user_id is the NOT NULL FK audit column (no inbound message
   // has a single "user who created" it — we attribute to the
   // WhatsApp config owner as a stable default).
+  //
+  // `name` is deliberately left NULL: no operator has named this
+  // number yet, and seeding it with the pushname would make the
+  // WhatsApp-reported value indistinguishable from a real one the
+  // moment it landed. The UI reads through `contactDisplayName`, which
+  // falls back name → wa_profile_name → phone, so the contact still
+  // shows their WhatsApp name everywhere — it just stays flagged as
+  // "not operator-entered" and can never shadow a spreadsheet import.
   const { data: newContact, error: createError } = await supabaseAdmin()
     .from('contacts')
     .insert({
       account_id: accountId,
       user_id: configOwnerUserId,
       phone,
-      name: name || phone,
+      name: null,
+      wa_profile_name: name || null,
     })
     .select()
     .single()

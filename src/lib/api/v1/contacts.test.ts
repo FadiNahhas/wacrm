@@ -13,6 +13,7 @@ describe('serializeContact', () => {
       id: 'c1',
       phone: '+14155550123',
       name: 'Jane',
+      wa_profile_name: 'jane_wa',
       email: null,
       company: 'Acme',
       avatar_url: null,
@@ -27,6 +28,9 @@ describe('serializeContact', () => {
       id: 'c1',
       phone: '+14155550123',
       name: 'Jane',
+      // Exposed alongside `name` so an API consumer can still show a
+      // label for contacts no operator has named.
+      wa_profile_name: 'jane_wa',
       email: null,
       company: 'Acme',
       avatar_url: null,

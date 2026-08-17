@@ -8,6 +8,7 @@ import {
   batchRetryDelayMs,
 } from '@/lib/broadcast-retry';
 import { Contact, MessageTemplate } from '@/types';
+import { contactDisplayName } from '@/lib/contacts/display-name';
 
 export type CustomFieldOperator = 'is' | 'is_not' | 'contains';
 
@@ -113,7 +114,10 @@ export function resolveVariables(
 
     if (v.type === 'field') {
       const fieldMap: Record<string, string | undefined> = {
-        name: contact.name,
+        // Fall back through wa_profile_name → phone: `name` is null for
+        // any contact an operator hasn't named, and substituting an
+        // empty string would send "Hi ," to them.
+        name: contactDisplayName(contact),
         phone: contact.phone,
         email: contact.email,
         company: contact.company,

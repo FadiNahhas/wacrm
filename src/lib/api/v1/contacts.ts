@@ -20,7 +20,13 @@ export const CONTACT_SELECT = '*, contact_tags(tags(*))';
 export interface ApiContact {
   id: string;
   phone: string;
+  /** Operator-owned name. Null until a human names the contact — the
+   *  inbound webhook never writes here. */
   name: string | null;
+  /** The contact's own WhatsApp profile name. Read-only over the API:
+   *  it is refreshed from every inbound message, so a write would be
+   *  overwritten anyway. Additive field — existing clients ignore it. */
+  wa_profile_name: string | null;
   email: string | null;
   company: string | null;
   avatar_url: string | null;
@@ -48,6 +54,7 @@ export function serializeContact(row: Record<string, unknown>): ApiContact {
     id: row.id as string,
     phone: row.phone as string,
     name: (row.name as string | null) ?? null,
+    wa_profile_name: (row.wa_profile_name as string | null) ?? null,
     email: (row.email as string | null) ?? null,
     company: (row.company as string | null) ?? null,
     avatar_url: (row.avatar_url as string | null) ?? null,

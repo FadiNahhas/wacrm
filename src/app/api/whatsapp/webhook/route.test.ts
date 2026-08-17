@@ -29,6 +29,16 @@ const h = vi.hoisted(() => ({
     }[],
     /** Error the next storage upload resolves with, if any. */
     storageUploadError: null as { message: string } | null,
+    /** Row `findExistingContact` resolves. null => the create path. */
+    existingContact: {
+      id: 'contact-1',
+      name: 'Ada',
+      phone: '15551230000',
+    } as Record<string, unknown> | null,
+    /** Every patch written to `contacts` (the pushname-overwrite guard). */
+    contactUpdates: [] as Record<string, unknown>[],
+    /** Every row inserted into `contacts`. */
+    contactInserts: [] as Record<string, unknown>[],
   },
 }))
 
@@ -61,6 +71,27 @@ vi.mock('@supabase/supabase-js', () => ({
                   error: null,
                 }),
             }),
+          }
+        case 'contacts':
+          // findOrCreateContact writes: update(patch).eq(), and on the
+          // create path insert(row).select().single().
+          return {
+            update: (patch: Record<string, unknown>) => {
+              h.state.contactUpdates.push(patch)
+              return { eq: () => Promise.resolve({ error: null }) }
+            },
+            insert: (row: Record<string, unknown>) => {
+              h.state.contactInserts.push(row)
+              return {
+                select: () => ({
+                  single: () =>
+                    Promise.resolve({
+                      data: { id: 'contact-new', ...row },
+                      error: null,
+                    }),
+                }),
+              }
+            },
           }
         case 'conversations':
           // findOrCreateConversation: select().eq().eq().order().limit()
@@ -175,11 +206,12 @@ vi.mock('@/lib/whatsapp/meta-api', () => ({
   downloadMedia: vi.fn(),
 }))
 vi.mock('@/lib/contacts/dedupe', () => ({
-  findExistingContact: vi.fn(async () => ({
-    id: 'contact-1',
-    name: 'Ada',
-    phone: '15551230000',
-  })),
+  // Returns a *copy* each call: findOrCreateContact mutates the row it
+  // gets back to mirror the patch it wrote, and a shared object would
+  // leak that mutation into the next test.
+  findExistingContact: vi.fn(async () =>
+    h.state.existingContact ? { ...h.state.existingContact } : null,
+  ),
   isUniqueViolation: () => false,
 }))
 vi.mock('@/lib/whatsapp/webhook-signature', () => ({
@@ -260,6 +292,13 @@ beforeEach(() => {
   h.state.mirrorInboundMedia = true
   h.state.storageUploads = []
   h.state.storageUploadError = null
+  h.state.existingContact = {
+    id: 'contact-1',
+    name: 'Ada',
+    phone: '15551230000',
+  }
+  h.state.contactUpdates = []
+  h.state.contactInserts = []
   mockGetMediaUrl.mockResolvedValue({
     url: 'https://lookaside.fbsbx.com/whatsapp/abc',
     mimeType: 'image/jpeg',
@@ -536,5 +575,120 @@ describe('inbound webhook: after() awaits automations (#368)', () => {
     // If the dispatches were fire-and-forget, completed would still be 0
     // here — the callback would have resolved before the timers fired.
     expect(h.state.automationCompleted).toBe(3)
+  })
+})
+
+// ============================================================
+// The pushname must never overwrite an operator-entered name.
+//
+// `contacts.name` holds names maintained externally by operators. The
+// webhook used to mirror Meta's `profile.name` into it on every inbound
+// message, so a contact messaging us silently destroyed the real name.
+// The pushname now lands in `wa_profile_name` instead.
+// ============================================================
+describe('inbound webhook: WhatsApp pushname vs operator-owned name', () => {
+  function inboundFrom(profileName: string) {
+    const body = {
+      entry: [
+        {
+          changes: [
+            {
+              field: 'messages',
+              value: {
+                metadata: { phone_number_id: 'pn-1' },
+                contacts: [
+                  { wa_id: '15551230000', profile: { name: profileName } },
+                ],
+                messages: [TEXT_MESSAGE],
+              },
+            },
+          ],
+        },
+      ],
+    }
+    return {
+      text: async () => JSON.stringify(body),
+      headers: { get: () => 'sha256=stub' },
+    } as unknown as Request
+  }
+
+  async function inboundWithPushname(profileName: string) {
+    await POST(inboundFrom(profileName))
+    for (const cb of h.state.afterCallbacks) await cb()
+  }
+
+  it('never writes the pushname to `name` when the contact already has one', async () => {
+    h.state.existingContact = {
+      id: 'contact-1',
+      name: 'מנהלת בית הספר',
+      wa_profile_name: null,
+      phone: '15551230000',
+    }
+
+    await inboundWithPushname('Ada 🌸')
+
+    // Exactly one patch, and it touches wa_profile_name only.
+    expect(h.state.contactUpdates).toHaveLength(1)
+    expect(h.state.contactUpdates[0]).toMatchObject({
+      wa_profile_name: 'Ada 🌸',
+    })
+    expect(h.state.contactUpdates[0]).not.toHaveProperty('name')
+  })
+
+  it('does not touch the row at all when the pushname is unchanged', async () => {
+    h.state.existingContact = {
+      id: 'contact-1',
+      name: 'מנהלת בית הספר',
+      wa_profile_name: 'Ada',
+      phone: '15551230000',
+    }
+
+    await inboundWithPushname('Ada')
+
+    expect(h.state.contactUpdates).toHaveLength(0)
+  })
+
+  it('fills `name` only when the existing one is null or blank', async () => {
+    for (const emptyish of [null, '', '   ']) {
+      h.state.contactUpdates = []
+      h.state.afterCallbacks = []
+      h.state.existingContact = {
+        id: 'contact-1',
+        name: emptyish,
+        wa_profile_name: null,
+        phone: '15551230000',
+      }
+
+      await inboundWithPushname('Ada')
+
+      expect(h.state.contactUpdates[0]).toMatchObject({
+        name: 'Ada',
+        wa_profile_name: 'Ada',
+      })
+    }
+  })
+
+  it('creates an unknown number with a null `name` and the pushname parked in wa_profile_name', async () => {
+    h.state.existingContact = null
+
+    await inboundWithPushname('Ada')
+
+    expect(h.state.contactInserts).toHaveLength(1)
+    expect(h.state.contactInserts[0]).toMatchObject({
+      phone: '15551230000',
+      name: null,
+      wa_profile_name: 'Ada',
+    })
+  })
+
+  it('creates a contact with no pushname without inventing a name', async () => {
+    h.state.existingContact = null
+
+    await inboundWithPushname('')
+
+    expect(h.state.contactInserts[0]).toMatchObject({
+      name: null,
+      wa_profile_name: null,
+    })
   })
 })
