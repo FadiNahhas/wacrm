@@ -282,6 +282,8 @@
     "sidebar": {
       "contactInfo": "Contact info",
       "customFields": "Custom fields",
+      "customFieldEditHint": "Click to edit",
+      "customFieldSaveFailed": "Couldn't save that field. Try again.",
       "tags": "Tags",
       "notes": "Notes",
       "deals": "Deals",

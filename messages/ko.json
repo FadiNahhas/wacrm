@@ -282,6 +282,8 @@
     "sidebar": {
       "contactInfo": "연락처 정보",
       "customFields": "맞춤 필드",
+      "customFieldEditHint": "클릭하여 수정",
+      "customFieldSaveFailed": "필드를 저장하지 못했습니다. 다시 시도하세요.",
       "tags": "태그",
       "notes": "메모",
       "deals": "딜",
