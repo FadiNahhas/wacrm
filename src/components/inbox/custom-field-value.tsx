@@ -123,7 +123,7 @@ export function CustomFieldValue({
       }}
       title={t("customFieldEditHint")}
       className={cn(
-        "block max-w-full truncate text-left cursor-text rounded outline-none focus-visible:ring-1 focus-visible:ring-primary/50",
+        "block max-w-full truncate text-left text-xs cursor-text rounded outline-none focus-visible:ring-1 focus-visible:ring-primary/50",
         className,
       )}
     >
