@@ -77,9 +77,9 @@ onCommit?: (newValue: string) => Promise<boolean>;
   - While the commit is in flight, the input is disabled (brief spinner or
     opacity change — small enough not to need a dedicated loading prop, use
     local component state).
-  - On `onCommit` resolving `false`: revert the input's value to the last
-    committed value, show an error toast, and **stay in edit mode** (not
-    blurred) so the admin can retry without retyping.
+  - On `onCommit` resolving `false`: keep the input showing the attempted
+    (not-yet-saved) text, show an error toast, and **stay in edit mode**
+    (not blurred) so the admin can retry without retyping.
   - On success: exit edit mode; the parent's updated `fields` state flows
     back down as the new `value` prop.
 - This mirrors the existing commit-on-blur pattern in `CustomFieldsManager`'s
@@ -121,8 +121,8 @@ props passed, so those instances keep rendering read-only.
   - Editable: click swaps to an input with the current value; Enter calls
     `onCommit` with the trimmed value; Escape reverts without calling
     `onCommit`.
-  - `onCommit` resolving `false`: value reverts, edit mode persists (input
-    still shown).
+  - `onCommit` resolving `false`: attempted value is kept (not reverted to
+    the last-committed value), edit mode persists (input still shown).
 
 ## Non-goals / follow-ups (not part of this change)
 
