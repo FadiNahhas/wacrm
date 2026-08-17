@@ -52,7 +52,9 @@ vi.mock("@/lib/supabase/client", () => ({
   createClient: () => createClient(),
 }));
 
-const { writeCustomFieldValue } = await import("./use-contact-custom-fields");
+const { writeCustomFieldValue, applyFieldValueUpdate } = await import(
+  "./use-contact-custom-fields"
+);
 
 afterEach(() => {
   vi.clearAllMocks();
@@ -111,5 +113,33 @@ describe("writeCustomFieldValue", () => {
     const ok = await writeCustomFieldValue("contact-1", "field-1", "");
 
     expect(ok).toBe(false);
+  });
+});
+
+describe("applyFieldValueUpdate", () => {
+  const fields = [
+    { id: "field-1", field_name: "Role", value: "Teacher" },
+    { id: "field-2", field_name: "City", value: "Tel Aviv" },
+  ];
+
+  it("updates the matching entry's value and leaves other entries untouched", () => {
+    const result = applyFieldValueUpdate(fields, "field-1", "Principal");
+
+    expect(result).toEqual([
+      { id: "field-1", field_name: "Role", value: "Principal" },
+      { id: "field-2", field_name: "City", value: "Tel Aviv" },
+    ]);
+  });
+
+  it("removes the entry entirely when trimmedValue is empty", () => {
+    const result = applyFieldValueUpdate(fields, "field-1", "");
+
+    expect(result).toEqual([{ id: "field-2", field_name: "City", value: "Tel Aviv" }]);
+  });
+
+  it("returns the fields array unchanged when fieldId doesn't match any entry", () => {
+    const result = applyFieldValueUpdate(fields, "field-missing", "Whatever");
+
+    expect(result).toEqual(fields);
   });
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { SettingsChip } from "@/components/settings/settings-chip";
@@ -42,6 +42,7 @@ export function CustomFieldValue({
   onCommit?: (newValue: string) => Promise<boolean>;
 }) {
   const t = useTranslations("Inbox.sidebar");
+  const inputRef = useRef<HTMLInputElement | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState(value);
   const [saving, setSaving] = useState(false);
@@ -55,18 +56,24 @@ export function CustomFieldValue({
         return;
       }
       setSaving(true);
-      const ok = await onCommit!(trimmed);
-      setSaving(false);
+      let ok = false;
+      try {
+        ok = await onCommit!(trimmed);
+      } finally {
+        setSaving(false);
+      }
       if (ok) {
         setIsEditing(false);
       } else {
         toast.error(t("customFieldSaveFailed"));
         setDraft(trimmed);
+        requestAnimationFrame(() => inputRef.current?.focus());
       }
     }
 
     return (
       <input
+        ref={inputRef}
         autoFocus
         dir="auto"
         value={draft}
@@ -90,18 +97,21 @@ export function CustomFieldValue({
   }
 
   const tone = flagTone(value);
-  const display = tone ? (
-    <SettingsChip variant={tone === "yes" ? "ok" : "muted"} className={className}>
-      <span dir="auto">{value}</span>
-    </SettingsChip>
-  ) : (
-    <span dir="auto" className={cn("text-xs text-foreground", className)}>
-      {value}
-    </span>
-  );
+
+  function renderValue(displayClassName?: string) {
+    return tone ? (
+      <SettingsChip variant={tone === "yes" ? "ok" : "muted"} className={displayClassName}>
+        <span dir="auto">{value}</span>
+      </SettingsChip>
+    ) : (
+      <span dir="auto" className={cn("text-xs text-foreground", displayClassName)}>
+        {value}
+      </span>
+    );
+  }
 
   if (!editable || !onCommit) {
-    return display;
+    return renderValue(className);
   }
 
   return (
@@ -112,9 +122,12 @@ export function CustomFieldValue({
         setIsEditing(true);
       }}
       title={t("customFieldEditHint")}
-      className="cursor-text rounded outline-none focus-visible:ring-1 focus-visible:ring-primary/50"
+      className={cn(
+        "block max-w-full truncate text-left cursor-text rounded outline-none focus-visible:ring-1 focus-visible:ring-primary/50",
+        className,
+      )}
     >
-      {display}
+      {renderValue()}
     </button>
   );
 }

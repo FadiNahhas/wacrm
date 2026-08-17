@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { CustomField, ContactCustomValue } from "@/types";
 
@@ -69,6 +69,22 @@ export async function writeCustomFieldValue(
 }
 
 /**
+ * Pure reducer for updateFieldValue's local-state patch: replaces the
+ * matching entry's value, or drops the entry when trimmedValue is empty
+ * (mirrors the "empty means no row" rule fetchFields applies when
+ * reading). Exported standalone so it's testable without rendering.
+ */
+export function applyFieldValueUpdate(
+  fields: ContactCustomFieldEntry[],
+  fieldId: string,
+  trimmedValue: string,
+): ContactCustomFieldEntry[] {
+  return trimmedValue
+    ? fields.map((f) => (f.id === fieldId ? { ...f, value: trimmedValue } : f))
+    : fields.filter((f) => f.id !== fieldId);
+}
+
+/**
  * Fetches the account's custom-field catalogue plus this contact's values
  * and joins them client-side (same query shape as
  * `contact-detail-view.tsx`'s `fetchCustomFields`), so the chat header and
@@ -78,6 +94,11 @@ export async function writeCustomFieldValue(
 export function useContactCustomFields(contactId: string | null | undefined) {
   const [fields, setFields] = useState<ContactCustomFieldEntry[]>([]);
   const [loading, setLoading] = useState(false);
+  const latestContactIdRef = useRef(contactId);
+
+  useEffect(() => {
+    latestContactIdRef.current = contactId;
+  }, [contactId]);
 
   const fetchFields = useCallback(async () => {
     if (!contactId) {
@@ -141,15 +162,19 @@ export function useContactCustomFields(contactId: string | null | undefined) {
   const updateFieldValue = useCallback(
     async (fieldId: string, newValue: string): Promise<boolean> => {
       if (!contactId) return false;
-      const ok = await writeCustomFieldValue(contactId, fieldId, newValue);
+      const requestContactId = contactId;
+      const ok = await writeCustomFieldValue(requestContactId, fieldId, newValue);
       if (!ok) return false;
 
+      // The admin may have switched to a different conversation while this
+      // write was in flight. The database write above always targeted the
+      // right contact; only skip the LOCAL state patch if it's now stale,
+      // so we don't overwrite the currently-displayed contact's fields
+      // with the previous contact's edit.
+      if (latestContactIdRef.current !== requestContactId) return true;
+
       const trimmed = newValue.trim();
-      setFields((prev) =>
-        trimmed
-          ? prev.map((f) => (f.id === fieldId ? { ...f, value: trimmed } : f))
-          : prev.filter((f) => f.id !== fieldId),
-      );
+      setFields((prev) => applyFieldValueUpdate(prev, fieldId, trimmed));
       return true;
     },
     [contactId],
