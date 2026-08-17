@@ -53,8 +53,11 @@ function InboxPageInner() {
   // thread header and the contact sidebar, so switching conversations
   // doesn't trigger two independent custom-fields queries for the same
   // contact.
-  const { fields: customFields, priorityFields: priorityCustomFields } =
-    useContactCustomFields(activeContact?.id ?? null);
+  const {
+    fields: customFields,
+    priorityFields: priorityCustomFields,
+    updateFieldValue: updateCustomFieldValue,
+  } = useContactCustomFields(activeContact?.id ?? null);
   const [whatsappConnected, setWhatsappConnected] = useState<boolean | null>(
     null
   );
@@ -640,7 +643,11 @@ function InboxPageInner() {
             toggle — which is itself desktop-only — never affects it. */}
         {contactPanelOpen && (
           <div className="hidden lg:block">
-            <ContactSidebar contact={activeContact} customFields={customFields} />
+            <ContactSidebar
+              contact={activeContact}
+              customFields={customFields}
+              onUpdateCustomField={updateCustomFieldValue}
+            />
           </div>
         )}
       </div>

@@ -33,13 +33,26 @@ interface ContactSidebarProps {
    * conversations doesn't fire two custom-fields queries per contact.
    */
   customFields?: ContactCustomFieldEntry[];
+  /**
+   * Persists a single custom field's value for the active contact. Owned
+   * by the page (which owns the `useContactCustomFields` hook instance
+   * shared with the message-thread header) and passed down so a save here
+   * updates both surfaces without a refetch. Edit affordance itself is
+   * gated on `useAuth().canEditSettings` below, not on whether this prop
+   * is present.
+   */
+  onUpdateCustomField?: (fieldId: string, value: string) => Promise<boolean>;
 }
 
-export function ContactSidebar({ contact, customFields = [] }: ContactSidebarProps) {
+export function ContactSidebar({
+  contact,
+  customFields = [],
+  onUpdateCustomField,
+}: ContactSidebarProps) {
   const tSidebar = useTranslations("Inbox.sidebar");
   const tThread = useTranslations("Inbox.messageThread");
 
-  const { accountId } = useAuth();
+  const { accountId, canEditSettings } = useAuth();
   const [copied, setCopied] = useState(false);
   const [deals, setDeals] = useState<Deal[]>([]);
   const [notes, setNotes] = useState<ContactNote[]>([]);
@@ -217,6 +230,12 @@ export function ContactSidebar({ contact, customFields = [] }: ContactSidebarPro
                       <CustomFieldValue
                         value={f.value}
                         className="max-w-32 shrink-0 truncate"
+                        editable={canEditSettings}
+                        onCommit={
+                          onUpdateCustomField
+                            ? (newValue) => onUpdateCustomField(f.id, newValue)
+                            : undefined
+                        }
                       />
                     </div>
                   ))}
