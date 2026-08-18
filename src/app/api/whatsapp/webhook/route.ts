@@ -47,6 +47,19 @@ interface WhatsAppMessage {
   audio?: { id: string; mime_type: string }
   sticker?: { id: string; mime_type: string }
   location?: { latitude: number; longitude: number; name?: string; address?: string }
+  /**
+   * A shared contact card ("Send contact" on the phone). Meta delivers
+   * the whole card inline here — there is no media id to fetch — so
+   * everything the customer shared is already in this payload. One
+   * message can carry several contacts, and each contact several
+   * phones (mobile + work).
+   */
+  contacts?: Array<{
+    name?: { formatted_name?: string; first_name?: string; last_name?: string }
+    phones?: Array<{ phone?: string; wa_id?: string; type?: string }>
+    emails?: Array<{ email?: string; type?: string }>
+    org?: { company?: string; title?: string }
+  }>
   reaction?: { message_id: string; emoji: string }
   /**
    * Populated by Meta when it can't deliver the message body — polls,
@@ -688,7 +701,7 @@ async function processMessage(
       ? 'image'         // stickers are images
       : message.type === 'button'
         ? 'interactive' // template quick-reply tap (issue #478)
-        : 'text'        // reaction, unknown → text fallback
+        : 'text'        // reaction, contacts, unknown → text fallback
 
   // Determine whether this is the contact's very first inbound message
   // BEFORE we insert, so the count is accurate. Covers the case where
@@ -1063,6 +1076,54 @@ async function parseMessageContent(
         return { ...empty, contentText: locationText }
       }
       return empty
+
+    case 'contacts': {
+      // A shared contact card. Unlike the types that fall through to
+      // `default`, nothing about this one is unrecoverable: Meta ships
+      // the entire card in the webhook body, so rendering it as
+      // "[Unsupported message type: contacts]" discarded data we were
+      // already holding. Customers routinely forward a colleague's
+      // number this way, and the agent needs to be able to read it
+      // straight out of the bubble.
+      //
+      // Flattened to text rather than given its own content_type: the
+      // messages.content_type CHECK (migration 010) has no 'contacts'
+      // value, and a summary line needs no bubble of its own — same
+      // trade the `location` case above makes.
+      const lines = (message.contacts ?? [])
+        .map((entry) => {
+          const name =
+            entry.name?.formatted_name?.trim() ||
+            [entry.name?.first_name, entry.name?.last_name]
+              .filter(Boolean)
+              .join(' ')
+              .trim()
+          // `phone` is the card's own display string ("+962 79 123
+          // 4567"); `wa_id` is the bare-digit form and is present only
+          // when that number is itself on WhatsApp. Prefer the readable
+          // one, but never drop a number just because it has no wa_id.
+          const phones = (entry.phones ?? [])
+            .map((p) => p.phone?.trim() || p.wa_id?.trim())
+            .filter(Boolean)
+          const emails = (entry.emails ?? [])
+            .map((e) => e.email?.trim())
+            .filter(Boolean)
+          return [name, entry.org?.company?.trim(), ...phones, ...emails]
+            .filter(Boolean)
+            .join(' - ')
+        })
+        .filter(Boolean)
+
+      // One line per shared contact. The bubble renders text with
+      // `whitespace-pre-wrap`, so a multi-contact card stacks; the
+      // conversation-list preview collapses it to a single line.
+      return {
+        ...empty,
+        contentText: lines.length
+          ? lines.map((line) => `[Contact] ${line}`).join('\n')
+          : '[Contact]',
+      }
+    }
 
     case 'reaction':
       return { ...empty, contentText: message.reaction?.emoji || null }

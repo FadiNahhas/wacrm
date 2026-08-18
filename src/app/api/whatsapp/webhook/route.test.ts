@@ -692,3 +692,113 @@ describe('inbound webhook: WhatsApp pushname vs operator-owned name', () => {
     })
   })
 })
+
+describe('inbound webhook: shared contact cards', () => {
+  // Customers forward a colleague's number as a contact card rather than
+  // typing it. Meta delivers the whole card inline, so the old `default`
+  // branch was discarding data the webhook already had.
+  const sharedContact = (contacts: unknown[]) => ({
+    id: 'wamid.CONTACT1',
+    from: '15551230000',
+    timestamp: '1700000000',
+    type: 'contacts',
+    contacts,
+  })
+
+  it('summarises a single shared contact instead of rejecting it', async () => {
+    await runWebhook(
+      sharedContact([
+        {
+          name: { formatted_name: 'Ahmad Saleh', first_name: 'Ahmad' },
+          phones: [
+            { phone: '+962 79 123 4567', wa_id: '962791234567', type: 'MOBILE' },
+          ],
+        },
+      ]),
+    )
+
+    expect(h.state.upsertCalls[0].row).toMatchObject({
+      content_type: 'text',
+      content_text: '[Contact] Ahmad Saleh - +962 79 123 4567',
+    })
+  })
+
+  it('keeps every number on a card that carries more than one', async () => {
+    await runWebhook(
+      sharedContact([
+        {
+          name: { formatted_name: 'Ahmad Saleh' },
+          phones: [
+            { phone: '+962 79 123 4567', type: 'MOBILE' },
+            { phone: '+962 6 555 0100', type: 'WORK' },
+          ],
+        },
+      ]),
+    )
+
+    expect(h.state.upsertCalls[0].row.content_text).toBe(
+      '[Contact] Ahmad Saleh - +962 79 123 4567 - +962 6 555 0100',
+    )
+  })
+
+  it('gives each contact its own line when several are shared at once', async () => {
+    await runWebhook(
+      sharedContact([
+        {
+          name: { formatted_name: 'Ahmad Saleh' },
+          phones: [{ phone: '+962 79 123 4567' }],
+        },
+        {
+          name: { formatted_name: 'Lina Haddad' },
+          phones: [{ phone: '+962 79 765 4321' }],
+        },
+      ]),
+    )
+
+    expect(h.state.upsertCalls[0].row.content_text).toBe(
+      '[Contact] Ahmad Saleh - +962 79 123 4567\n' +
+        '[Contact] Lina Haddad - +962 79 765 4321',
+    )
+  })
+
+  it('includes the company and email when the card carries them', async () => {
+    await runWebhook(
+      sharedContact([
+        {
+          name: { formatted_name: 'Ahmad Saleh' },
+          org: { company: 'Acme', title: 'Ops Lead' },
+          phones: [{ phone: '+962 79 123 4567' }],
+          emails: [{ email: 'ahmad@acme.com', type: 'WORK' }],
+        },
+      ]),
+    )
+
+    expect(h.state.upsertCalls[0].row.content_text).toBe(
+      '[Contact] Ahmad Saleh - Acme - +962 79 123 4567 - ahmad@acme.com',
+    )
+  })
+
+  it('falls back to the wa_id when the card has no display number', async () => {
+    await runWebhook(
+      sharedContact([
+        {
+          name: { first_name: 'Ahmad', last_name: 'Saleh' },
+          phones: [{ wa_id: '962791234567' }],
+        },
+      ]),
+    )
+
+    expect(h.state.upsertCalls[0].row.content_text).toBe(
+      '[Contact] Ahmad Saleh - 962791234567',
+    )
+  })
+
+  it('still writes a legible bubble for a card with nothing usable on it', async () => {
+    await runWebhook(sharedContact([{}]))
+
+    expect(h.state.upsertCalls[0].row).toMatchObject({
+      content_type: 'text',
+      content_text: '[Contact]',
+    })
+  })
+})
