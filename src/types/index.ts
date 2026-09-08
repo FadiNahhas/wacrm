@@ -590,6 +590,8 @@ export type ConditionSubject =
 
 export interface ConditionStepConfig {
   subject: ConditionSubject;
+  /** IANA zone for time_of_day; omitted on legacy rules that use server time. */
+  timezone?: string;
   /** e.g. field name, tag id, substring, or "HH:mm-HH:mm" depending on subject */
   operand?: string;
   /** For contact_field equals / message_content contains — comparison value */

@@ -86,7 +86,7 @@ export function QuickReplyPicker({
                       <span className="block truncate text-sm font-medium text-foreground">
                         {qr.title}
                       </span>
-                      <span className="block truncate text-xs text-muted-foreground">
+                      <span dir="auto" className="message-text block truncate text-xs text-muted-foreground">
                         {qr.kind === "interactive" && qr.interactive_payload
                           ? interactivePayloadPreviewText(qr.interactive_payload)
                           : qr.content_text}

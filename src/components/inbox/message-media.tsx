@@ -263,7 +263,7 @@ export function MediaDocumentBubble({
         className="flex min-w-0 flex-1 items-center gap-2 rounded-lg bg-muted/50 px-3 py-2 text-sm hover:bg-muted"
       >
         <FileText className="h-5 w-5 shrink-0 text-muted-foreground" />
-        <span className="truncate">{message.content_text || t("document")}</span>
+        <span dir="auto" className="message-text min-w-0 truncate">{message.content_text || t("document")}</span>
       </a>
       <MediaActionButton
         icon={Download}

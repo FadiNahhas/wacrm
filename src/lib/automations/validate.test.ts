@@ -5,6 +5,22 @@ import {
 } from "./validate";
 
 describe("validateStepsForActivation", () => {
+  it("validates named time zones and daily ranges, including nested branches", () => {
+    const condition = (operand: string, timezone?: unknown) => ({
+      step_type: "condition",
+      step_config: { subject: "time_of_day", operand, timezone },
+    });
+    expect(validateStepsForActivation([condition("08:30-18:00", "Asia/Jerusalem")])).toEqual([]);
+    expect(validateStepsForActivation([condition("18:00-08:30")])).toEqual([]);
+    expect(validateStepsForActivation([condition("08:30-18:00", "")])).toEqual([]);
+    expect(validateStepsForActivation([condition("08:30-25:00", "Not/AZone")]).map((issue) => issue.path))
+      .toEqual(["steps[0].operand", "steps[0].timezone"]);
+    expect(validateStepsForActivation([{
+      ...condition("08:30-18:00", "Asia/Jerusalem"),
+      branches: { no: [condition("18:00-08:30", 42)] },
+    }])[0].path).toBe("steps[0].no.steps[0].timezone");
+  });
+
   it("rejects empty or missing step lists", () => {
     expect(validateStepsForActivation([])).toEqual([
       { path: "steps", message: "active automations need at least one step" },

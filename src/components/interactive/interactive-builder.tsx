@@ -114,11 +114,12 @@ export function InteractiveBuilder({
 
           <Field label="Body" counter={`${value.body.length}/${INTERACTIVE_LIMITS.bodyMaxLength}`}>
             <Textarea
+              dir="auto"
               value={value.body}
               maxLength={INTERACTIVE_LIMITS.bodyMaxLength}
               onChange={(e) => setField({ body: e.target.value })}
               placeholder="What the customer reads above the options"
-              className="min-h-20 bg-muted text-foreground"
+              className="message-text min-h-20 bg-muted text-foreground"
             />
           </Field>
 
@@ -128,6 +129,7 @@ export function InteractiveBuilder({
               counter={`${(value.header ?? "").length}/${INTERACTIVE_LIMITS.headerTextMaxLength}`}
             >
               <Input
+                dir="auto"
                 value={value.header ?? ""}
                 maxLength={INTERACTIVE_LIMITS.headerTextMaxLength}
                 onChange={(e) => setField({ header: e.target.value })}
@@ -139,6 +141,7 @@ export function InteractiveBuilder({
               counter={`${(value.footer ?? "").length}/${INTERACTIVE_LIMITS.footerMaxLength}`}
             >
               <Input
+                dir="auto"
                 value={value.footer ?? ""}
                 maxLength={INTERACTIVE_LIMITS.footerMaxLength}
                 onChange={(e) => setField({ footer: e.target.value })}
@@ -226,6 +229,7 @@ function ButtonsEditor({
           >
             {advanced && (
               <Input
+                dir="ltr"
                 value={b.id}
                 onChange={(e) => update(i, { id: slugify(e.target.value, `btn_${i + 1}`) })}
                 placeholder="id"
@@ -233,6 +237,7 @@ function ButtonsEditor({
               />
             )}
             <Input
+              dir="auto"
               value={b.title}
               maxLength={INTERACTIVE_LIMITS.buttonTitleMaxLength}
               onChange={(e) => update(i, { title: e.target.value })}
@@ -331,6 +336,7 @@ function ListEditor({
     <div className="flex flex-col gap-3">
       <Field label="List button label" counter={`${value.button_label.length}/${INTERACTIVE_LIMITS.buttonTitleMaxLength}`}>
         <Input
+          dir="auto"
           value={value.button_label}
           maxLength={INTERACTIVE_LIMITS.buttonTitleMaxLength}
           onChange={(e) => onChange({ ...value, button_label: e.target.value })}
@@ -346,6 +352,7 @@ function ListEditor({
         <div key={sIdx} className="rounded-md border border-border bg-muted/40 p-2">
           <div className="mb-2 flex items-center gap-2">
             <Input
+              dir="auto"
               value={section.title ?? ""}
               onChange={(e) => updateSection(sIdx, { title: e.target.value })}
               placeholder="Section title (optional)"
@@ -368,6 +375,7 @@ function ListEditor({
                 <div className="flex items-center gap-2">
                   {advanced && (
                     <Input
+                      dir="ltr"
                       value={row.id}
                       onChange={(e) =>
                         updateRow(sIdx, rIdx, { id: slugify(e.target.value, `row_${rIdx + 1}`) })
@@ -377,6 +385,7 @@ function ListEditor({
                     />
                   )}
                   <Input
+                    dir="auto"
                     value={row.title}
                     maxLength={INTERACTIVE_LIMITS.listRowTitleMaxLength}
                     onChange={(e) => updateRow(sIdx, rIdx, { title: e.target.value })}
@@ -398,6 +407,7 @@ function ListEditor({
                   )}
                 </div>
                 <Input
+                  dir="auto"
                   value={row.description ?? ""}
                   maxLength={INTERACTIVE_LIMITS.listRowDescriptionMaxLength}
                   onChange={(e) => updateRow(sIdx, rIdx, { description: e.target.value })}

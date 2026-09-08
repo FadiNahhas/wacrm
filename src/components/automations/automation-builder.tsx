@@ -1136,7 +1136,7 @@ function StepRenderer({
                 {isCondition ? "Condition" : step.step_type === "wait" ? "Wait" : "Action"}
               </div>
               <div className="truncate text-sm font-medium text-foreground">{t(`steps.${meta.label}`)}</div>
-              <div className="truncate text-[11px] text-muted-foreground">{previewFor(step)}</div>
+              <div dir="auto" className="message-text truncate text-[11px] text-muted-foreground">{previewFor(step)}</div>
             </div>
             <ChevronDown
               className={cn("h-4 w-4 text-muted-foreground transition-transform", expanded && "rotate-180")}
@@ -1307,10 +1307,11 @@ function StepEditor({
       return (
         <FieldBlock label={t("config.messageText")}>
           <Textarea
+            dir="auto"
             value={(cfg.text as string) ?? ""}
             onChange={(e) => set({ text: e.target.value })}
             placeholder={t("config.placeholderMessageText")}
-            className="min-h-24 bg-muted text-foreground"
+            className="message-text min-h-24 bg-muted text-foreground"
           />
         </FieldBlock>
       )
@@ -1472,6 +1473,26 @@ function StepEditor({
               className="bg-muted text-foreground"
             />
           </FieldBlock>
+          {cfg.subject === "time_of_day" && (
+            <FieldBlock label={t("config.timezoneLabel")}>
+              <select
+                aria-label={t("config.timezoneLabel")}
+                value={(cfg.timezone as string) ?? ""}
+                onChange={(e) => set({ timezone: e.target.value })}
+                className="w-full rounded-md border border-border bg-muted px-2 py-1.5 text-sm text-foreground"
+              >
+                <option value="">{t("config.serverTimezone")}</option>
+                <option value="Asia/Jerusalem">{t("config.jerusalemTimezone")}</option>
+                <option value="UTC">UTC</option>
+                {Intl.supportedValuesOf("timeZone")
+                  .filter((zone) => zone !== "Asia/Jerusalem" && zone !== "UTC")
+                  .map((zone) => (
+                    <option key={zone} value={zone}>{zone.replaceAll("_", " ")}</option>
+                  ))}
+              </select>
+              <p className="mt-1 text-xs text-muted-foreground">{t("config.timezoneHint")}</p>
+            </FieldBlock>
+          )}
           {(cfg.subject === "contact_field" || cfg.subject === "message_content") && (
             <FieldBlock label="Value">
               <Input

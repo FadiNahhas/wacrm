@@ -228,3 +228,11 @@ html[data-theme="rose"] {
     @apply font-sans;
   }
 }
+
+/* Content direction is independent of the operator's interface language.
+   plaintext also gives each newline-delimited paragraph its own bidi base. */
+.message-text {
+  text-align: start;
+  unicode-bidi: plaintext;
+  overflow-wrap: anywhere;
+}

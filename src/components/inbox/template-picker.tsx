@@ -238,7 +238,7 @@ export function TemplatePicker({
                           </span>
                         )}
                       </div>
-                      <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                      <p dir="auto" className="message-text mt-1 line-clamp-2 text-xs text-muted-foreground">
                         {t.body_text}
                       </p>
                     </div>

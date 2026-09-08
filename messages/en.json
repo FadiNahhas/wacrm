@@ -1000,6 +1000,10 @@
           "time_of_day": "Time of day"
         },
         "operandLabel": "Operand",
+        "timezoneLabel": "Time zone",
+        "serverTimezone": "Server time (existing rule)",
+        "jerusalemTimezone": "Jerusalem",
+        "timezoneHint": "The daily hours follow this time zone, including daylight-saving changes.",
         "placeholderTime": "HH:mm-HH:mm",
         "placeholderContact": "name / email / company",
         "placeholderTag": "tag id",

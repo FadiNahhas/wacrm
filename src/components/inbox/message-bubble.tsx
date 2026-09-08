@@ -1,5 +1,7 @@
 "use client";
 
+import { BidiText } from "@/components/ui/bidi-text";
+
 import { cn } from "@/lib/utils";
 import type { Message, MessageReaction } from "@/types";
 import {
@@ -76,8 +78,8 @@ function MessageContent({
   switch (message.content_type) {
     case "text":
       return (
-        <p className="whitespace-pre-wrap break-words text-sm">
-          {message.content_text}
+        <p dir="auto" className="message-text whitespace-pre-wrap break-words text-sm">
+          <BidiText>{message.content_text ?? ""}</BidiText>
         </p>
       );
 
@@ -90,8 +92,8 @@ function MessageContent({
             <MediaUnavailable label={t("photo")} t={t} />
           )}
           {message.content_text && (
-            <p className="mt-1 whitespace-pre-wrap break-words text-sm">
-              {message.content_text}
+            <p dir="auto" className="message-text mt-1 whitespace-pre-wrap break-words text-sm">
+              <BidiText>{message.content_text ?? ""}</BidiText>
             </p>
           )}
         </div>
@@ -106,8 +108,8 @@ function MessageContent({
             <MediaUnavailable label={t("video")} t={t} />
           )}
           {message.content_text && (
-            <p className="mt-1 whitespace-pre-wrap break-words text-sm">
-              {message.content_text}
+            <p dir="auto" className="message-text mt-1 whitespace-pre-wrap break-words text-sm">
+              <BidiText>{message.content_text ?? ""}</BidiText>
             </p>
           )}
         </div>
@@ -152,12 +154,12 @@ function MessageContent({
             {t("template")}
           </span>
           {message.content_text ? (
-            <p className="mt-1 whitespace-pre-wrap break-words text-sm">
-              {message.content_text}
+            <p dir="auto" className="message-text mt-1 whitespace-pre-wrap break-words text-sm">
+              <BidiText>{message.content_text ?? ""}</BidiText>
             </p>
           ) : (
             message.template_name && (
-              <p className="mt-1 break-words text-sm italic opacity-80">
+              <p dir="auto" className="message-text mt-1 break-words text-sm italic opacity-80">
                 {message.template_name}
               </p>
             )
@@ -169,7 +171,7 @@ function MessageContent({
       return (
         <div className="flex items-center gap-2 text-sm">
           <MapPin className="h-4 w-4 shrink-0 text-muted-foreground" />
-          <span>{message.content_text || t("locationShared")}</span>
+          <span dir="auto" className="message-text"><BidiText>{message.content_text || t("locationShared")}</BidiText></span>
         </div>
       );
 
@@ -193,23 +195,23 @@ function MessageContent({
               <CornerDownLeft className="h-3 w-3" />
               {t("buttonReply")}
             </span>
-            <p className="whitespace-pre-wrap break-words text-sm">
-              {message.content_text || t("interactiveReply")}
+            <p dir="auto" className="message-text whitespace-pre-wrap break-words text-sm">
+              <BidiText>{message.content_text || t("interactiveReply")}</BidiText>
             </p>
           </div>
         );
       }
       return (
-        <p className="whitespace-pre-wrap break-words text-sm">
-          {message.content_text || t("interactiveReply")}
+        <p dir="auto" className="message-text whitespace-pre-wrap break-words text-sm">
+          <BidiText>{message.content_text || t("interactiveReply")}</BidiText>
         </p>
       );
     }
 
     default:
       return (
-        <p className="whitespace-pre-wrap break-words text-sm">
-          {message.content_text || t("unsupported")}
+        <p dir="auto" className="message-text whitespace-pre-wrap break-words text-sm">
+          <BidiText>{message.content_text || t("unsupported")}</BidiText>
         </p>
       );
   }
@@ -233,13 +235,13 @@ export function MessageBubble({
   return (
     <div
       className={cn(
-        "flex flex-col",
+        "flex min-w-0 max-w-full flex-col",
         isAgent ? "items-end" : "items-start",
       )}
     >
       <div
         className={cn(
-          "relative rounded-2xl px-3 py-2",
+          "relative min-w-0 max-w-full rounded-2xl px-3 py-2",
           isAgent
             ? "rounded-br-md bg-primary text-primary-foreground"
             : "rounded-bl-md bg-muted text-foreground",

@@ -1,5 +1,7 @@
 "use client";
 
+import { BidiText } from "@/components/ui/bidi-text";
+
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Message } from "@/types";
@@ -43,8 +45,9 @@ export function ReplyQuote({
     >
       <div className="min-w-0 flex-1 overflow-hidden">
         <div
+          dir="auto"
           className={cn(
-            "truncate text-[11px] font-medium",
+            "message-text truncate text-[11px] font-medium",
             onPrimary ? "text-primary-foreground" : "text-primary",
           )}
         >
@@ -57,8 +60,8 @@ export function ReplyQuote({
          *  layout wider, shoving the contact sidebar off-screen.
          *  `break-words` also wraps long URLs that have no whitespace
          *  to break on. Issue #165. */}
-        <div className="whitespace-pre-wrap break-words text-xs text-foreground/80">
-          {preview}
+        <div dir="auto" className="message-text whitespace-pre-wrap break-words text-xs text-foreground/80">
+          <BidiText>{preview}</BidiText>
         </div>
       </div>
       {onDismiss && (

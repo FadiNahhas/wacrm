@@ -1000,6 +1000,10 @@
           "time_of_day": "시간대"
         },
         "operandLabel": "피연산자",
+        "timezoneLabel": "시간대",
+        "serverTimezone": "서버 시간 (기존 규칙)",
+        "jerusalemTimezone": "예루살렘",
+        "timezoneHint": "매일 이 시간대를 기준으로 실행하며 서머타임 변경도 자동 반영합니다.",
         "placeholderTime": "HH:mm-HH:mm",
         "placeholderContact": "이름 / 이메일 / 회사",
         "placeholderTag": "태그 id",
