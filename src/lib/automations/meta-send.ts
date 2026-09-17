@@ -11,6 +11,7 @@ import {
   phoneVariants,
   isRecipientNotAllowedError,
 } from '@/lib/whatsapp/phone-utils'
+import { assertConversationInAccount } from '@/lib/whatsapp/conversation-scope'
 import {
   resolveTemplateRow,
   templateContentText,
@@ -130,6 +131,10 @@ async function sendViaMeta(input: SendInput): Promise<{ whatsapp_message_id: str
     throw new Error('contact not found for this account')
   }
 
+  // Same for the conversation the message lands in — see
+  // conversation-scope.ts (GHSA-m4fx-g6pr-hrw8).
+  await assertConversationInAccount(db, input.conversationId, input.accountId)
+
   const sanitized = sanitizePhoneForMeta(contact.phone)
   if (!isValidE164(sanitized)) {
     throw new Error(`contact phone invalid: ${contact.phone}`)
@@ -247,6 +252,7 @@ async function sendViaMeta(input: SendInput): Promise<{ whatsapp_message_id: str
       updated_at: new Date().toISOString(),
     })
     .eq('id', input.conversationId)
+    .eq('account_id', input.accountId)
 
   return { whatsapp_message_id: waMessageId }
 }

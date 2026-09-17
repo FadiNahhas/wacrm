@@ -8,6 +8,8 @@ const h = vi.hoisted(() => ({
     ownedCustomField: null as { id: string } | null,
     conversation: null as { id: string; status: string } | null,
     agentReply: null as { id: string } | null,
+    /** Row the account-scoped `conversations` lookup resolves. */
+    ownedConversation: null as { id: string } | null,
     automations: [] as Record<string, unknown>[],
     steps: [] as Record<string, unknown>[],
     fromCalls: [] as string[],
@@ -36,6 +38,11 @@ vi.mock("./admin-client", () => {
       // ownership guard / condition read
       return { data: state.owned, error: null };
     }
+    if (table === "conversations") {
+      // Upstream's account-scope guard reads `ownedConversation`; this
+      // fork's status / agent-reply checks read `conversation`.
+      return { data: state.ownedConversation ?? state.conversation, error: null };
+    }
     if (table === "custom_fields") {
       // account-scoped ownership lookup for a custom field definition
       return { data: state.ownedCustomField, error: null };
@@ -48,7 +55,6 @@ vi.mock("./admin-client", () => {
       return { data: null, error: null };
     }
     if (table === "automations") return { data: state.automations, error: null };
-    if (table === "conversations") return { data: state.conversation, error: null };
     if (table === "messages") return { data: state.agentReply, error: null };
     if (table === "automation_pending_executions" && type === "update") {
       state.updateCalls.push({ table, filters: ops.filters });
@@ -126,6 +132,7 @@ beforeEach(() => {
   h.state.ownedCustomField = null;
   h.state.conversation = null;
   h.state.agentReply = null;
+  h.state.ownedConversation = null;
   h.state.automations = [];
   h.state.steps = [];
   h.state.fromCalls = [];
@@ -211,6 +218,43 @@ describe("runAutomationsForTrigger — tenant isolation", () => {
       triggerType: "new_message_received",
       contactId: "c1",
       context: {},
+    });
+
+    expect(h.state.fromCalls).toContain("automations");
+  });
+
+  it("refuses a caller-supplied conversation_id from another account (GHSA-m4fx-g6pr-hrw8)", async () => {
+    // POST /api/automations/engine copies `body.context` verbatim into
+    // the run, so this id is attacker-controlled. The contact is the
+    // caller's own — only the conversation is foreign, which is exactly
+    // what made this a cross-tenant message-injection primitive.
+    h.state.owned = { id: "c1" };
+    h.state.ownedConversation = null; // not in this account
+    h.state.automations = [automationWithUpdateStep()];
+    h.state.steps = [updateStep()];
+
+    await runAutomationsForTrigger({
+      accountId: ACCOUNT,
+      triggerType: "new_message_received",
+      contactId: "c1",
+      context: { conversation_id: "victim-conversation-uuid" },
+    });
+
+    expect(h.state.fromCalls).toContain("conversations");
+    expect(h.state.fromCalls).not.toContain("automations");
+    expect(h.state.updateCalls).toHaveLength(0);
+  });
+
+  it("proceeds when the conversation belongs to the account", async () => {
+    h.state.owned = { id: "c1" };
+    h.state.ownedConversation = { id: "conv-1" };
+    h.state.automations = [];
+
+    await runAutomationsForTrigger({
+      accountId: ACCOUNT,
+      triggerType: "new_message_received",
+      contactId: "c1",
+      context: { conversation_id: "conv-1" },
     });
 
     expect(h.state.fromCalls).toContain("automations");
