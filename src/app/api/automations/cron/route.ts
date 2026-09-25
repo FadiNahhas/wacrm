@@ -7,8 +7,9 @@ import type { AutomationContext } from '@/lib/automations/engine'
 /**
  * Drain due `automation_pending_executions` rows. Meant to be hit
  * on a schedule (Vercel Cron / external pinger) — requires a shared
- * secret via the `x-cron-secret` header to match
- * `AUTOMATION_CRON_SECRET`.
+ * secret via the `x-cron-secret` header to match one of the configured
+ * scheduler secrets. Supabase Cron is the production scheduler; GitHub
+ * Actions remains a manual fallback.
  *
  * The claim step (status = 'running') serves as a simple lock so
  * overlapping invocations don't double-process rows. Best-effort
@@ -16,7 +17,11 @@ import type { AutomationContext } from '@/lib/automations/engine'
  * two-step UPDATE-by-id.
  */
 export async function GET(request: Request) {
-  const secrets = [process.env.AUTOMATION_CRON_SECRET, process.env.AUTOMATION_CRON_SECRET_GITHUB].filter(
+  const secrets = [
+    process.env.AUTOMATION_CRON_SECRET,
+    process.env.AUTOMATION_CRON_SECRET_GITHUB,
+    process.env.AUTOMATION_CRON_SECRET_SUPABASE,
+  ].filter(
     (value): value is string => Boolean(value),
   )
   if (secrets.length === 0) {
