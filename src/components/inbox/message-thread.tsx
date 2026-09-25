@@ -191,6 +191,8 @@ export function MessageThread({
   // parent's resyncToken); the 700ms spin is just feedback so the click
   // doesn't feel like a no-op. Cleared via the timer ref on unmount.
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isSendingHelpCheck, setIsSendingHelpCheck] = useState(false);
+  const sendingHelpCheckRef = useRef(false);
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     return () => {
@@ -268,6 +270,30 @@ export function MessageThread({
 
     return { expired, remaining };
   }, [messages, tTimer]);
+
+  const handleSendHelpCheck = useCallback(async () => {
+    if (!conversation || sendingHelpCheckRef.current) return;
+    sendingHelpCheckRef.current = true;
+    setIsSendingHelpCheck(true);
+    try {
+      const response = await fetch('/api/automations/activation-help-now', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ conversation_id: conversation.id }),
+      });
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}));
+        throw new Error(result.error || t('helpCheckFailed'));
+      }
+      toast.success(t('helpCheckSent'));
+      onRefresh?.();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t('helpCheckFailed'));
+    } finally {
+      sendingHelpCheckRef.current = false;
+      setIsSendingHelpCheck(false);
+    }
+  }, [conversation, onRefresh, t]);
 
   // Store latest callback in a ref so fetchMessages doesn't need to
   // depend on `onMessagesLoaded` — otherwise parent re-renders cause
@@ -1011,6 +1037,18 @@ export function MessageThread({
               />
             </button>
           )}
+
+          <button
+            type="button"
+            onClick={handleSendHelpCheck}
+            disabled={isSendingHelpCheck || sessionInfo.expired || conversation.status === 'closed'}
+            aria-label={t('sendHelpCheck')}
+            title={t('sendHelpCheck')}
+            className="inline-flex h-7 items-center gap-1 rounded-md px-2 text-xs text-primary transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <MessageSquare className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">{t('helpCheck')}</span>
+          </button>
 
           {/* Status dropdown */}
           <DropdownMenu>

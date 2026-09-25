@@ -8,7 +8,7 @@
 //   2. loads the conversation + contact + WhatsApp config,
 //   3. sends to Meta (with phone-variant retry + contact auto-fix),
 //   4. persists the message + updates the conversation,
-//   5. pauses any active Flow run for the contact (agent stepped in).
+//   5. pauses active Flows and cancels reply-sensitive automation waits.
 //
 // It is transport-agnostic: it takes a `SupabaseClient` and an
 // `accountId` and throws `SendMessageError` on failure. The callers
@@ -36,6 +36,7 @@ import {
 } from '@/lib/whatsapp/interactive';
 import { decrypt, encrypt, isLegacyFormat } from '@/lib/whatsapp/encryption';
 import { supabaseAdmin } from '@/lib/flows/admin-client';
+import { cancelReplySensitiveWaits } from '@/lib/automations/pending-wait';
 import {
   sanitizePhoneForMeta,
   isValidE164,
@@ -530,6 +531,14 @@ export async function sendMessageToConversation(
       '[flows] pause-on-agent-send threw:',
       err instanceof Error ? err.message : err
     );
+  }
+
+  // The scheduled runner also checks for this message after claiming a
+  // due wait. Retire still-pending waits now so they never fire later.
+  try {
+    await cancelReplySensitiveWaits(accountId, contact.id);
+  } catch (err) {
+    console.error('[automations] cancel-on-agent-send failed:', err);
   }
 
   return { messageId: messageRecord.id, whatsappMessageId: waMessageId };
