@@ -576,6 +576,26 @@ describe('inbound webhook: after() awaits automations (#368)', () => {
     // here — the callback would have resolved before the timers fired.
     expect(h.state.automationCompleted).toBe(3)
   })
+
+  it('offers returning text to configured reply automations without losing the plain-text flow', async () => {
+    h.state.priorCustomerMsgCount = 1
+    await runWebhook({
+      ...TEXT_MESSAGE,
+      text: { body: 'مرحبًا، لا أستطيع نقل كتابي. مفتاح التفعيل: TEST01' },
+    })
+
+    const calls = h.runAutomationsForTrigger.mock.calls.map((call) => call[0])
+    expect(calls.map((call: { triggerType: string }) => call.triggerType)).toContain('interactive_reply')
+    expect(calls.find((call: { triggerType: string }) => call.triggerType === 'interactive_reply')).toMatchObject({
+      context: {
+        is_first_inbound_message: false,
+        interactive_reply_id: undefined,
+      },
+    })
+    expect(h.dispatchInboundToFlows).toHaveBeenCalledWith(expect.objectContaining({
+      message: expect.objectContaining({ kind: 'text' }),
+    }))
+  })
 })
 
 // ============================================================

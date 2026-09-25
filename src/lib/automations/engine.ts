@@ -44,6 +44,8 @@ export interface AutomationContext {
   agent_id?: string
   /** Button / list-row id the customer tapped, for interactive_reply. */
   interactive_reply_id?: string
+  /** Whether this is the contact's first customer-sent message. */
+  is_first_inbound_message?: boolean
   /** Internal marker for a wait that must stop after a human reply. */
   cancel_if_agent_replied_since?: string
 }
@@ -807,10 +809,16 @@ export function triggerMatches(automation: Automation, ctx: AutomationContext | 
   if (automation.trigger_type === 'interactive_reply') {
     const cfg = automation.trigger_config as InteractiveReplyTriggerConfig
     const replyId = ctx?.interactive_reply_id
-    if (!replyId || !Array.isArray(cfg?.reply_ids) || cfg.reply_ids.length === 0) {
-      return false
+    if (replyId) {
+      return Array.isArray(cfg?.reply_ids) && cfg.reply_ids.includes(replyId)
     }
-    return cfg.reply_ids.includes(replyId)
+    if (ctx?.is_first_inbound_message !== false) return false
+    const text = ctx?.message_text?.trim().toLocaleLowerCase() ?? ''
+    return Boolean(text && Array.isArray(cfg?.message_contains) &&
+      cfg.message_contains.some((phrase) =>
+        typeof phrase === 'string' && phrase.trim() &&
+        text.includes(phrase.trim().toLocaleLowerCase()),
+      ))
   }
 
   if (automation.trigger_type === 'tag_added') {

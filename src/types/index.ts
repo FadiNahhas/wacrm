@@ -520,6 +520,8 @@ export interface TimeBasedTriggerConfig {
 export interface InteractiveReplyTriggerConfig {
   /** Button / list-row ids to match, exact. Any one matching fires. */
   reply_ids: string[];
+  /** Optional phrases in a returning contact's plain-text message. */
+  message_contains?: string[];
 }
 
 export type AutomationTriggerConfig =

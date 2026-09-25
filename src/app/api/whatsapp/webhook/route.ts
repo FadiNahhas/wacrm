@@ -841,11 +841,10 @@ async function processMessage(
   // message — see the comment block above.
   if (!flowConsumed) {
     automationTriggers.push('new_message_received', 'keyword_match')
-    // Interactive tap → fire the interactive_reply trigger too (only
-    // meaningful when a button/list reply actually arrived). Enables
-    // automation-only chained menus; when a Flow owns the menu it will
-    // have consumed the reply and this is skipped.
-    if (interactiveReplyId) {
+    // Returning contacts can also enter an interactive-reply automation
+    // through its configured message phrases. First messages retain the
+    // welcome menu; a later button tap still enters the support flow.
+    if (interactiveReplyId || (inboundText.trim() && !isFirstInboundMessage)) {
       automationTriggers.push('interactive_reply')
     }
   }
@@ -873,8 +872,7 @@ async function processMessage(
       context: {
         message_text: inboundText,
         conversation_id: conversation.id,
-        // Only set on interactive taps; drives the interactive_reply
-        // trigger's exact-id match.
+        is_first_inbound_message: isFirstInboundMessage,
         interactive_reply_id: interactiveReplyId ?? undefined,
       },
     }).catch((err) => console.error('[automations] dispatch failed:', err))
