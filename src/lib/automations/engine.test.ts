@@ -6,6 +6,8 @@ const h = vi.hoisted(() => ({
   state: {
     owned: null as { id: string } | null,
     ownedCustomField: null as { id: string } | null,
+    conversation: null as { id: string; status: string } | null,
+    agentReply: null as { id: string } | null,
     automations: [] as Record<string, unknown>[],
     steps: [] as Record<string, unknown>[],
     fromCalls: [] as string[],
@@ -46,6 +48,12 @@ vi.mock("./admin-client", () => {
       return { data: null, error: null };
     }
     if (table === "automations") return { data: state.automations, error: null };
+    if (table === "conversations") return { data: state.conversation, error: null };
+    if (table === "messages") return { data: state.agentReply, error: null };
+    if (table === "automation_pending_executions" && type === "update") {
+      state.updateCalls.push({ table, filters: ops.filters });
+      return { data: null, error: null };
+    }
     if (table === "automation_logs") {
       if (type === "insert") {
         state.logInserts.push(ops.payload as Record<string, unknown>);
@@ -79,7 +87,9 @@ vi.mock("./admin-client", () => {
       is: () => b,
       order: () => b,
       limit: () => b,
-      single: () => Promise.resolve(resolve(ops)),
+      single: () => Promise.resolve(table === "automations"
+        ? { data: state.automations[0] ?? null, error: null }
+        : resolve(ops)),
       maybeSingle: () => Promise.resolve(resolve(ops)),
       then: (onF: (v: unknown) => unknown, onR?: (e: unknown) => unknown) =>
         Promise.resolve(resolve(ops)).then(onF, onR),
@@ -104,7 +114,8 @@ vi.mock("./meta-send", () => ({
   engineSendInteractive: vi.fn(async () => ({ whatsapp_message_id: "m1" })),
 }));
 
-import { runAutomationsForTrigger, triggerMatches } from "./engine";
+import { resumePendingExecution, runAutomationsForTrigger, triggerMatches } from "./engine";
+import { engineSendText } from "./meta-send";
 import type { Automation, KeywordMatchTriggerConfig } from "@/types";
 
 const ACCOUNT = "acct-1";
@@ -112,6 +123,8 @@ const ACCOUNT = "acct-1";
 beforeEach(() => {
   h.state.owned = null;
   h.state.ownedCustomField = null;
+  h.state.conversation = null;
+  h.state.agentReply = null;
   h.state.automations = [];
   h.state.steps = [];
   h.state.fromCalls = [];
@@ -119,6 +132,52 @@ beforeEach(() => {
   h.state.upsertCalls = [];
   h.state.logInserts = [];
   h.state.logUpdates = [];
+  vi.mocked(engineSendText).mockClear();
+});
+
+describe("resuming a wait that requires a human reply check", () => {
+  const pending = {
+    id: "pending-1",
+    automation_id: "a1",
+    account_id: ACCOUNT,
+    user_id: "u1",
+    contact_id: "c1",
+    log_id: null,
+    parent_step_id: null,
+    branch: null,
+    next_step_position: 1,
+    context: {
+      conversation_id: "conversation-1",
+      cancel_if_agent_replied_since: "2026-09-25T12:00:00.000Z",
+    },
+  } as const;
+
+  beforeEach(() => {
+    h.state.automations = [automationWithUpdateStep()];
+    h.state.conversation = { id: "conversation-1", status: "open" };
+    h.state.steps = [{
+      id: "s2", automation_id: "a1", step_type: "send_message", position: 1,
+      parent_step_id: null, step_config: { text: "Do you still need help?" },
+    }];
+  });
+
+  it("skips the follow-up after an agent replied", async () => {
+    h.state.agentReply = { id: "agent-message" };
+    await resumePendingExecution({ ...pending });
+    expect(engineSendText).not.toHaveBeenCalled();
+    expect(h.state.updateCalls).toContainEqual(expect.objectContaining({ table: "automation_pending_executions" }));
+  });
+
+  it("skips the follow-up after the conversation was closed", async () => {
+    h.state.conversation = { id: "conversation-1", status: "closed" };
+    await resumePendingExecution({ ...pending });
+    expect(engineSendText).not.toHaveBeenCalled();
+  });
+
+  it("sends the follow-up when no agent replied", async () => {
+    await resumePendingExecution({ ...pending });
+    expect(engineSendText).toHaveBeenCalledOnce();
+  });
 });
 
 describe("runAutomationsForTrigger — tenant isolation", () => {

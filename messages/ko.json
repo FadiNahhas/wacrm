@@ -987,6 +987,7 @@
         "titleLabel": "제목",
         "amountLabel": "수치",
         "unitLabel": "단위",
+        "cancelIfAgentReplied": "상담원이 답변했거나 대화가 종료되면 다음 단계를 건너뛰기",
         "units": {
           "minutes": "분",
           "hours": "시간",

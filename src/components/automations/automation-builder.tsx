@@ -1440,6 +1440,14 @@ function StepEditor({
               <option value="days">{t("config.units.days")}</option>
             </select>
           </FieldBlock>
+          <label className="col-span-2 flex items-center gap-2 text-sm text-foreground">
+            <input
+              type="checkbox"
+              checked={Boolean(cfg.cancel_if_agent_replied)}
+              onChange={(e) => set({ cancel_if_agent_replied: e.target.checked })}
+            />
+            {t("config.cancelIfAgentReplied")}
+          </label>
         </div>
       )
     case "condition":

@@ -25,6 +25,7 @@ import { MAX_TAG_CHAIN_DEPTH, getTagChainDepth } from '@/lib/contacts/tag-chain'
 import { engineSendText, engineSendTemplate, engineSendInteractive } from './meta-send'
 import { validateInteractivePayload } from '@/lib/whatsapp/interactive'
 import { isDeliverableUrl } from '@/lib/webhooks/ssrf'
+import { extractLabeledActivationKey } from './activation-key'
 
 // ------------------------------------------------------------
 // Public API
@@ -43,6 +44,8 @@ export interface AutomationContext {
   agent_id?: string
   /** Button / list-row id the customer tapped, for interactive_reply. */
   interactive_reply_id?: string
+  /** Internal marker for a wait that must stop after a human reply. */
+  cancel_if_agent_replied_since?: string
 }
 
 export interface DispatchInput {
@@ -153,6 +156,10 @@ export async function resumePendingExecution(pending: {
   }
 
   try {
+    if (await shouldCancelWaitAfterAgentReply(automation as Automation, pending)) {
+      await markPending(pending.id, 'done')
+      return
+    }
     await executeStepsFrom({
       automation: automation as Automation,
       contactId: pending.contact_id,
@@ -168,6 +175,35 @@ export async function resumePendingExecution(pending: {
     console.error('[automations] resume failed:', err)
     await markPending(pending.id, 'failed')
   }
+}
+
+async function shouldCancelWaitAfterAgentReply(
+  automation: Automation,
+  pending: { contact_id: string | null; context: AutomationContext },
+): Promise<boolean> {
+  const since = pending.context?.cancel_if_agent_replied_since
+  if (!since || !pending.contact_id) return false
+
+  const db = supabaseAdmin()
+  const { data: conversation, error: conversationError } = await db
+    .from('conversations')
+    .select('id,status')
+    .eq('account_id', automation.account_id)
+    .eq('contact_id', pending.contact_id)
+    .maybeSingle()
+  if (conversationError) throw new Error(`wait conversation check failed: ${conversationError.message}`)
+  if (!conversation || conversation.status === 'closed') return true
+
+  const { data: agentReply, error: replyError } = await db
+    .from('messages')
+    .select('id')
+    .eq('conversation_id', conversation.id)
+    .eq('sender_type', 'agent')
+    .gte('created_at', since)
+    .limit(1)
+    .maybeSingle()
+  if (replyError) throw new Error(`wait agent reply check failed: ${replyError.message}`)
+  return Boolean(agentReply)
 }
 
 // ------------------------------------------------------------
@@ -280,7 +316,13 @@ async function executeStepsFrom(args: ExecuteArgs): Promise<void> {
     if (step.step_type === 'wait') {
       const cfg = step.step_config as WaitStepConfig
       const ms = waitMs(cfg)
-      await db.from('automation_pending_executions').insert({
+      const context = { ...args.context }
+      if (cfg.cancel_if_agent_replied) {
+        context.cancel_if_agent_replied_since = new Date().toISOString()
+      } else {
+        delete context.cancel_if_agent_replied_since
+      }
+      const { error: pendingError } = await db.from('automation_pending_executions').insert({
         automation_id: args.automation.id,
         // Tenancy: account_id required NOT NULL post-017.
         account_id: args.automation.account_id,
@@ -290,10 +332,11 @@ async function executeStepsFrom(args: ExecuteArgs): Promise<void> {
         parent_step_id: args.parentStepId,
         branch: args.branch,
         next_step_position: step.position + 1,
-        context: args.context,
+        context,
         run_at: new Date(Date.now() + ms).toISOString(),
         status: 'pending',
       })
+      if (pendingError) throw new Error(`wait could not be scheduled: ${pendingError.message}`)
       results.push({
         step_id: step.id,
         step_type: step.step_type,
@@ -595,7 +638,22 @@ async function runStep(step: AutomationStep, args: ExecuteArgs): Promise<string>
       if (!(await isDeliverableUrl(cfg.url))) {
         throw new Error('send_webhook: destination not allowed')
       }
-      const body = cfg.body_template ? interpolate(cfg.body_template, args) : JSON.stringify(args.context)
+      let bodyArgs = args
+      if (cfg.body_template && /\{\{\s*vars\.activation_key\s*\}\}/.test(cfg.body_template)) {
+        const key = await recentActivationKey(args)
+        bodyArgs = {
+          ...args,
+          context: {
+            ...args.context,
+            vars: {
+              ...args.context.vars,
+              activation_key: key ?? 'not found in recent messages',
+              conversation_id: args.context.conversation_id ?? '',
+            },
+          },
+        }
+      }
+      const body = cfg.body_template ? interpolate(cfg.body_template, bodyArgs) : JSON.stringify(args.context)
       const res = await fetch(cfg.url, {
         method: 'POST',
         headers: { 'content-type': 'application/json', ...(cfg.headers ?? {}) },
@@ -623,6 +681,36 @@ async function runStep(step: AutomationStep, args: ExecuteArgs): Promise<string>
     default:
       return `unknown step: ${step.step_type}`
   }
+}
+
+async function recentActivationKey(args: ExecuteArgs): Promise<string | null> {
+  if (!args.contactId || !args.context.conversation_id) return null
+  const db = supabaseAdmin()
+  const { data: conversation, error: conversationError } = await db
+    .from('conversations')
+    .select('id')
+    .eq('id', args.context.conversation_id)
+    .eq('account_id', args.automation.account_id)
+    .eq('contact_id', args.contactId)
+    .maybeSingle()
+  if (conversationError) throw new Error(`activation key conversation lookup failed: ${conversationError.message}`)
+  if (!conversation) return null
+
+  const { data: messages, error: messagesError } = await db
+    .from('messages')
+    .select('content_text')
+    .eq('conversation_id', conversation.id)
+    .eq('sender_type', 'customer')
+    .eq('content_type', 'text')
+    .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+    .order('created_at', { ascending: false })
+    .limit(50)
+  if (messagesError) throw new Error(`activation key message lookup failed: ${messagesError.message}`)
+  for (const message of messages ?? []) {
+    const key = extractLabeledActivationKey(message.content_text ?? '')
+    if (key) return key
+  }
+  return null
 }
 
 // ------------------------------------------------------------

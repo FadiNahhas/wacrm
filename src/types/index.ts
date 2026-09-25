@@ -580,6 +580,8 @@ export interface CreateDealStepConfig {
 export interface WaitStepConfig {
   amount: number;
   unit: 'minutes' | 'hours' | 'days';
+  /** Skip remaining steps if a human replied or the conversation was closed. */
+  cancel_if_agent_replied?: boolean;
 }
 
 export type ConditionSubject =
