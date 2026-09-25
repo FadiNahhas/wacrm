@@ -213,6 +213,14 @@ export function validateTriggerForActivation(
         message: 'reply ids cannot be empty strings',
       })
     }
+    if (cfg.message_contains !== undefined &&
+      (!Array.isArray(cfg.message_contains) ||
+        cfg.message_contains.some((v) => typeof v !== 'string' || v.trim() === ''))) {
+      issues.push({
+        path: 'trigger.message_contains',
+        message: 'message phrases must be non-empty strings',
+      })
+    }
   }
 
   return issues

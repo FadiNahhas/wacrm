@@ -995,9 +995,11 @@ function InteractiveReplyConfig({
   t: ReturnType<typeof useTranslations>
 }) {
   const ids = (config?.reply_ids as string[] | undefined) ?? []
+  const phrases = (config?.message_contains as string[] | undefined) ?? []
   // Same local-draft-then-commit pattern as KeywordMatchConfig so
   // commas + spaces survive keystrokes.
   const [draft, setDraft] = useState(ids.join(", "))
+  const [phrasesDraft, setPhrasesDraft] = useState(() => phrases.join("\n"))
 
   function commit() {
     const parsed = draft
@@ -1006,6 +1008,12 @@ function InteractiveReplyConfig({
       .filter(Boolean)
     setDraft(parsed.join(", "))
     onChange({ ...config, reply_ids: parsed })
+  }
+
+  function commitPhrases() {
+    const parsed = phrasesDraft.split("\n").map((s) => s.trim()).filter(Boolean)
+    setPhrasesDraft(parsed.join("\n"))
+    onChange({ ...config, message_contains: parsed })
   }
 
   return (
@@ -1027,6 +1035,19 @@ function InteractiveReplyConfig({
         className="bg-muted font-mono text-foreground"
       />
       <p className="mt-1 text-[11px] text-muted-foreground">{t("replyIdsHelp")}</p>
+      <label htmlFor="interactive-reply-message-phrases" className="mb-1 mt-4 block text-xs font-medium text-muted-foreground">
+        {t("messagePhrases")}
+      </label>
+      <Textarea
+        id="interactive-reply-message-phrases"
+        value={phrasesDraft}
+        onChange={(e) => setPhrasesDraft(e.target.value)}
+        onBlur={commitPhrases}
+        rows={3}
+        placeholder={t("messagePhrasesHint")}
+        className="bg-muted text-foreground"
+      />
+      <p className="mt-1 text-[11px] text-muted-foreground">{t("messagePhrasesHelp")}</p>
     </div>
   )
 }

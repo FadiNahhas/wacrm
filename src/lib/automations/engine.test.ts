@@ -408,14 +408,14 @@ function customStep(field: string, value: string) {
 }
 
 describe("triggerMatches — interactive_reply", () => {
-  function automation(reply_ids: string[]): Automation {
+  function automation(reply_ids: string[], message_contains?: string[]): Automation {
     return {
       id: "a1",
       account_id: ACCOUNT,
       user_id: "u1",
       name: "menu step",
       trigger_type: "interactive_reply",
-      trigger_config: { reply_ids },
+      trigger_config: { reply_ids, message_contains },
       is_active: true,
       execution_count: 0,
       created_at: "",
@@ -444,6 +444,32 @@ describe("triggerMatches — interactive_reply", () => {
   it("does not match when no reply id is present or config is empty", () => {
     expect(triggerMatches(automation(["yes"]), {})).toBe(false);
     expect(triggerMatches(automation([]), { interactive_reply_id: "yes" })).toBe(false);
+  });
+
+  it("matches a specific phrase in a returning contact's text", () => {
+    const a = automation(["btnupdt"], ["مرحبًا، لا أستطيع نقل كتابي. مفتاح التفعيل:"]);
+    expect(triggerMatches(a, {
+      message_text: "مرحبًا، لا أستطيع نقل كتابي. مفتاح التفعيل: TEST01",
+      is_first_inbound_message: false,
+    })).toBe(true);
+    expect(triggerMatches(a, {
+      message_text: "أريد السؤال عن المواد التعليمية",
+      is_first_inbound_message: false,
+    })).toBe(false);
+    expect(triggerMatches(a, {
+      message_text: "مرحبًا، لا أستطيع نقل كتابي. مفتاح التفعيل: TEST01",
+      is_first_inbound_message: true,
+    })).toBe(false);
+    expect(triggerMatches(a, {
+      message_text: "مرحبًا، لا أستطيع نقل كتابي. مفتاح التفعيل: TEST01",
+    })).toBe(false);
+  });
+
+  it("does not match text when the customer tapped another button", () => {
+    expect(triggerMatches(automation(["btnupdt"], ["تفعيل الكتاب"]), {
+      interactive_reply_id: "another_button",
+      message_text: "تفعيل الكتاب",
+    })).toBe(false);
   });
 });
 
