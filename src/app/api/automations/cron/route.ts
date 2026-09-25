@@ -16,17 +16,19 @@ import type { AutomationContext } from '@/lib/automations/engine'
  * two-step UPDATE-by-id.
  */
 export async function GET(request: Request) {
-  const expected = process.env.AUTOMATION_CRON_SECRET
-  if (!expected) {
+  const secrets = [process.env.AUTOMATION_CRON_SECRET, process.env.AUTOMATION_CRON_SECRET_GITHUB].filter(
+    (value): value is string => Boolean(value),
+  )
+  if (secrets.length === 0) {
     return NextResponse.json({ error: 'cron not configured' }, { status: 503 })
   }
   const supplied = request.headers.get('x-cron-secret') ?? ''
   const suppliedBuf = Buffer.from(supplied)
-  const expectedBuf = Buffer.from(expected)
-  if (
-    suppliedBuf.length !== expectedBuf.length ||
-    !timingSafeEqual(suppliedBuf, expectedBuf)
-  ) {
+  const authorized = secrets.some((secret) => {
+    const expectedBuf = Buffer.from(secret)
+    return suppliedBuf.length === expectedBuf.length && timingSafeEqual(suppliedBuf, expectedBuf)
+  })
+  if (!authorized) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

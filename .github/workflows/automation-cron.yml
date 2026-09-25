@@ -1,0 +1,25 @@
+name: Drain WaCRM automation waits
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  drain:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resume due automations
+        env:
+          CRON_SECRET: ${{ secrets.AUTOMATION_CRON_SECRET_GITHUB }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo 'AUTOMATION_CRON_SECRET_GITHUB is not configured' >&2
+            exit 1
+          fi
+          curl --fail --silent --show-error --retry 2 --max-time 60 \
+            -H "x-cron-secret: $CRON_SECRET" \
+            https://wacrm-sage-beta.vercel.app/api/automations/cron
