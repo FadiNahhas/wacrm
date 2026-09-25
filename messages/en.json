@@ -987,6 +987,7 @@
         "titleLabel": "Title",
         "amountLabel": "Amount",
         "unitLabel": "Unit",
+        "cancelIfAgentReplied": "Skip remaining steps if an agent replied or the conversation was closed",
         "units": {
           "minutes": "Minutes",
           "hours": "Hours",
