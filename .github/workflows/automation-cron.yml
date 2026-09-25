@@ -1,8 +1,8 @@
 name: Drain WaCRM automation waits
 
+# Manual fallback. Supabase Cron runs the same endpoint every minute because
+# GitHub scheduled workflows can be delayed or dropped.
 on:
-  schedule:
-    - cron: '*/5 * * * *'
   workflow_dispatch:
 
 permissions:
