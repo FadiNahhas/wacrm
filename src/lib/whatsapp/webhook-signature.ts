@@ -45,3 +45,9 @@ export function verifyMetaWebhookSignature(
   if (a.length !== b.length) return false
   return crypto.timingSafeEqual(a, b)
 }
+
+export function verifyTokenMatches(stored: string, presented: string): boolean {
+  const a = crypto.createHash('sha256').update(stored).digest()
+  const b = crypto.createHash('sha256').update(presented).digest()
+  return crypto.timingSafeEqual(a, b)
+}

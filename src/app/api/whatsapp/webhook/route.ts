@@ -6,7 +6,11 @@ import { mirrorInboundMedia } from '@/lib/whatsapp/mirror-inbound-media'
 import { normalizePhone } from '@/lib/whatsapp/phone-utils'
 import { findExistingContact, isUniqueViolation } from '@/lib/contacts/dedupe'
 import { reopenClosedConversation } from '@/lib/conversations/reopen'
-import { verifyMetaWebhookSignature } from '@/lib/whatsapp/webhook-signature'
+import {
+  verifyMetaWebhookSignature,
+  verifyTokenMatches,
+} from '@/lib/whatsapp/webhook-signature'
+import { readCappedBody } from '@/lib/whatsapp/webhook-body'
 import { runAutomationsForTrigger } from '@/lib/automations/engine'
 import { dispatchInboundToFlows } from '@/lib/flows/engine'
 import { dispatchInboundToAiReply } from '@/lib/ai/auto-reply'
@@ -160,7 +164,7 @@ export async function GET(request: Request) {
     for (const config of configs) {
       if (!config.verify_token) continue
       try {
-        if (decrypt(config.verify_token) === verifyToken) {
+        if (verifyTokenMatches(decrypt(config.verify_token), verifyToken)) {
           matchedConfig = config
           break
         }
@@ -210,7 +214,11 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   // Read raw body first so we can HMAC-verify the exact bytes Meta
   // signed. request.json() would re-encode and break the signature.
-  const rawBody = await request.text()
+  const rawBody = await readCappedBody(request)
+  if (rawBody === null) {
+    console.warn('[webhook] rejected oversized payload')
+    return NextResponse.json({ error: 'Payload too large' }, { status: 413 })
+  }
   const signature = request.headers.get('x-hub-signature-256')
 
   if (!verifyMetaWebhookSignature(rawBody, signature)) {

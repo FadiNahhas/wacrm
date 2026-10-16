@@ -248,6 +248,16 @@ const TEXT_MESSAGE = {
   text: { body: 'hello' },
 }
 
+// A real Request: the route streams the body through readCappedBody, so
+// a `{ text() }` stub no longer works.
+function signedPost(body: BodyInit) {
+  return new Request('http://localhost/api/whatsapp/webhook', {
+    method: 'POST',
+    headers: { 'x-hub-signature-256': 'sha256=stub' },
+    body,
+  })
+}
+
 function inboundRequest(message: Record<string, unknown> = TEXT_MESSAGE) {
   const body = {
     entry: [
@@ -265,10 +275,7 @@ function inboundRequest(message: Record<string, unknown> = TEXT_MESSAGE) {
       },
     ],
   }
-  return {
-    text: async () => JSON.stringify(body),
-    headers: { get: () => 'sha256=stub' },
-  } as unknown as Request
+  return signedPost(JSON.stringify(body))
 }
 
 async function runWebhook(message?: Record<string, unknown>) {
@@ -626,10 +633,7 @@ describe('inbound webhook: WhatsApp pushname vs operator-owned name', () => {
         },
       ],
     }
-    return {
-      text: async () => JSON.stringify(body),
-      headers: { get: () => 'sha256=stub' },
-    } as unknown as Request
+    return signedPost(JSON.stringify(body))
   }
 
   async function inboundWithPushname(profileName: string) {
@@ -820,5 +824,35 @@ describe('inbound webhook: shared contact cards', () => {
       content_type: 'text',
       content_text: '[Contact]',
     })
+  })
+})
+
+describe('inbound webhook: oversized body cap', () => {
+  it('answers 413 for a body over 1 MiB and schedules no processing', async () => {
+    const before = h.state.afterCallbacks.length
+    const res = (await POST(signedPost('x'.repeat(1_048_577)))) as unknown as {
+      init?: { status?: number }
+    }
+    expect(res.init?.status).toBe(413)
+    expect(h.state.afterCallbacks).toHaveLength(before)
+  })
+
+  it('answers 413 from the declared Content-Length alone', async () => {
+    const before = h.state.afterCallbacks.length
+    const req = new Request('http://localhost/api/whatsapp/webhook', {
+      method: 'POST',
+      headers: { 'content-length': '2000000', 'x-hub-signature-256': 'sha256=stub' },
+      body: '{}',
+    })
+    const res = (await POST(req)) as unknown as { init?: { status?: number } }
+    expect(res.init?.status).toBe(413)
+    expect(h.state.afterCallbacks).toHaveLength(before)
+  })
+
+  it('lets a body at the cap through to JSON parsing', async () => {
+    const res = (await POST(signedPost('x'.repeat(1_048_576)))) as unknown as {
+      init?: { status?: number }
+    }
+    expect(res.init?.status).toBe(400)
   })
 })
