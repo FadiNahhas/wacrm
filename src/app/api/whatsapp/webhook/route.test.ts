@@ -236,6 +236,7 @@ vi.mock('@/lib/webhooks/deliver', () => ({
 
 import { POST } from './route'
 import { getMediaUrl, downloadMedia } from '@/lib/whatsapp/meta-api'
+import { MAX_WEBHOOK_BODY_BYTES } from '@/lib/whatsapp/webhook-body'
 
 const mockGetMediaUrl = vi.mocked(getMediaUrl)
 const mockDownloadMedia = vi.mocked(downloadMedia)
@@ -828,9 +829,9 @@ describe('inbound webhook: shared contact cards', () => {
 })
 
 describe('inbound webhook: oversized body cap', () => {
-  it('answers 413 for a body over 1 MiB and schedules no processing', async () => {
+  it('answers 413 for a body over the cap and schedules no processing', async () => {
     const before = h.state.afterCallbacks.length
-    const res = (await POST(signedPost('x'.repeat(1_048_577)))) as unknown as {
+    const res = (await POST(signedPost('x'.repeat(MAX_WEBHOOK_BODY_BYTES + 1)))) as unknown as {
       init?: { status?: number }
     }
     expect(res.init?.status).toBe(413)
@@ -841,7 +842,7 @@ describe('inbound webhook: oversized body cap', () => {
     const before = h.state.afterCallbacks.length
     const req = new Request('http://localhost/api/whatsapp/webhook', {
       method: 'POST',
-      headers: { 'content-length': '2000000', 'x-hub-signature-256': 'sha256=stub' },
+      headers: { 'content-length': String(MAX_WEBHOOK_BODY_BYTES + 1), 'x-hub-signature-256': 'sha256=stub' },
       body: '{}',
     })
     const res = (await POST(req)) as unknown as { init?: { status?: number } }
@@ -850,7 +851,7 @@ describe('inbound webhook: oversized body cap', () => {
   })
 
   it('lets a body at the cap through to JSON parsing', async () => {
-    const res = (await POST(signedPost('x'.repeat(1_048_576)))) as unknown as {
+    const res = (await POST(signedPost('x'.repeat(MAX_WEBHOOK_BODY_BYTES)))) as unknown as {
       init?: { status?: number }
     }
     expect(res.init?.status).toBe(400)

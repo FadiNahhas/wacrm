@@ -1,4 +1,4 @@
-export const MAX_WEBHOOK_BODY_BYTES = 1_048_576
+export const MAX_WEBHOOK_BODY_BYTES = 4 * 1024 * 1024
 
 export async function readCappedBody(
   request: Request,
