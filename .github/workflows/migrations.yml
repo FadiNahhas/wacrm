@@ -50,6 +50,12 @@ jobs:
           # bump in a PR, not a Tuesday where main goes red.
           version: 2.113.0
 
+      # Test the upcoming opt-in table ACL behavior regardless of CLI defaults.
+      # This fixture exists only in the disposable CI checkout, never in the
+      # deployable migration history. It must run before 001 creates any table.
+      - name: Disable implicit table grants in the test database
+        run: cp supabase/ci/no-table-defaults.sql supabase/migrations/000_ci_no_table_defaults.sql
+
       - name: Start Postgres
         run: supabase db start
 
@@ -69,3 +75,9 @@ jobs:
       # just the absence of an error.
       - name: Verify the resulting schema
         run: supabase db query --local --file supabase/ci/verify-schema.sql
+
+      - name: Verify Data API table privileges
+        run: supabase db query --local --file supabase/ci/verify-table-privileges.sql
+
+      - name: Verify protected application paths
+        run: supabase db query --local --file supabase/ci/verify-protected-paths.sql
