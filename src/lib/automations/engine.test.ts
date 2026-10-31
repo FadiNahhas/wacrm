@@ -230,6 +230,7 @@ describe("resuming a wait that requires a human reply check", () => {
   beforeEach(() => {
     h.state.automations = [automationWithUpdateStep()];
     h.state.conversation = { id: "conversation-1", status: "open" };
+    h.state.pending = [{ ...pending, status: "running" }];
     h.state.steps = [{
       id: "s2", automation_id: "a1", step_type: "send_message", position: 1,
       parent_step_id: null, step_config: { text: "Do you still need help?" },
@@ -240,7 +241,7 @@ describe("resuming a wait that requires a human reply check", () => {
     h.state.agentReply = { id: "agent-message" };
     await resumePendingExecution({ ...pending });
     expect(engineSendText).not.toHaveBeenCalled();
-    expect(h.state.updateCalls).toContainEqual(expect.objectContaining({ table: "automation_pending_executions" }));
+    expect(h.state.pending[0].status).toBe("done");
   });
 
   it("skips the follow-up after the conversation was closed", async () => {

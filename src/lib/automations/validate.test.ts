@@ -14,7 +14,7 @@ describe("validateStepsForActivation", () => {
     expect(validateStepsForActivation([condition("18:00-08:30")])).toEqual([]);
     expect(validateStepsForActivation([condition("08:30-18:00", "")])).toEqual([]);
     expect(validateStepsForActivation([condition("08:30-25:00", "Not/AZone")]).map((issue) => issue.path))
-      .toEqual(["steps[0].operand", "steps[0].timezone"]);
+      .toEqual(["steps[0].timezone", "steps[0].operand"]);
     expect(validateStepsForActivation([{
       ...condition("08:30-18:00", "Asia/Jerusalem"),
       branches: { no: [condition("18:00-08:30", 42)] },

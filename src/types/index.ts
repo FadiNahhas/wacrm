@@ -631,7 +631,6 @@ export interface ConditionStepConfig {
   operand?: string;
   /** For contact_field equals / message_content contains — comparison value */
   value?: string;
-  timezone?: string;
 }
 
 export interface SendWebhookStepConfig {

@@ -78,27 +78,6 @@ vi.mock('@supabase/supabase-js', () => ({
               },
             }),
           }
-        case 'contacts':
-          // findOrCreateContact writes: update(patch).eq(), and on the
-          // create path insert(row).select().single().
-          return {
-            update: (patch: Record<string, unknown>) => {
-              h.state.contactUpdates.push(patch)
-              return { eq: () => Promise.resolve({ error: null }) }
-            },
-            insert: (row: Record<string, unknown>) => {
-              h.state.contactInserts.push(row)
-              return {
-                select: () => ({
-                  single: () =>
-                    Promise.resolve({
-                      data: { id: 'contact-new', ...row },
-                      error: null,
-                    }),
-                }),
-              }
-            },
-          }
         case 'conversations':
           // findOrCreateConversation: select().eq().eq().order().limit()
           return {
@@ -405,6 +384,7 @@ beforeEach(() => {
   mockFindExistingContact.mockResolvedValue({
     id: 'contact-1',
     name: 'Ada',
+    wa_profile_name: 'Ada',
     phone: '15551230000',
   })
   mockGetMediaUrl.mockResolvedValue({
@@ -688,7 +668,7 @@ describe('inbound webhook: after() awaits automations (#368)', () => {
   })
 
   it('offers returning text to configured reply automations without losing the plain-text flow', async () => {
-    h.state.priorCustomerMsgCount = 1
+    h.state.firstInboundUnclaimed = false
     await runWebhook({
       ...TEXT_MESSAGE,
       text: { body: 'مرحبًا، لا أستطيع نقل كتابي. مفتاح التفعيل: TEST01' },
@@ -1000,6 +980,7 @@ describe('inbound webhook: business-scoped user IDs (#519)', () => {
     h.state.contactByWaUserId = {
       id: 'contact-bsuid',
       name: 'Sheena Nelson',
+      wa_profile_name: 'Sheena Nelson',
       phone: '',
       wa_user_id: 'US.13491208655302741918',
       wa_parent_user_id: 'US.ENT.11815799212886844830',

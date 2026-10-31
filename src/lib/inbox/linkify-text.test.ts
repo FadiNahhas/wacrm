@@ -41,13 +41,19 @@ describe('LinkifyText', () => {
   it('links multiple URLs and leaves trailing punctuation outside the links', () => {
     const markup = render('https://one.example.com, then www.two.example.com!');
     expect(markup.match(/<a\b/g)).toHaveLength(2);
-    expect(markup).toContain('>https://one.example.com</a>,');
-    expect(markup).toContain('>www.two.example.com</a>!');
+    expect(markup).toContain('>https://one.example.com</a></bdi>,');
+    expect(markup).toContain('>www.two.example.com</a></bdi>!');
   });
 
   it('keeps balanced parentheses inside a URL', () => {
     expect(render('https://example.com/path_(test).')).toContain(
-      '>https://example.com/path_(test)</a>.'
+      '>https://example.com/path_(test)</a></bdi>.'
+    );
+  });
+
+  it('keeps a link left-to-right inside an Arabic message', () => {
+    expect(render('افتحوا https://example.com/ar للمساعدة')).toBe(
+      '<span>افتحوا <bdi dir="ltr"><a href="https://example.com/ar" target="_blank" rel="noopener noreferrer nofollow" class="text-blue-600 underline underline-offset-2 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">https://example.com/ar</a></bdi> للمساعدة</span>'
     );
   });
 

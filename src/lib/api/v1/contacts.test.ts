@@ -197,12 +197,12 @@ describe('setContactTags', () => {
 describe('contactSearchFilter', () => {
   it('searches the phone column by digits only so a +E.164 query matches', () => {
     expect(contactSearchFilter('+1 (415) 555-1234')).toBe(
-      'name.ilike.*+1 415 555-1234*,phone.ilike.*14155551234*'
+      'name.ilike.*+1 415 555-1234*,wa_profile_name.ilike.*+1 415 555-1234*,phone.ilike.*14155551234*'
     );
   });
 
   it('skips the phone condition when the search has no digits', () => {
-    expect(contactSearchFilter('Jane')).toBe('name.ilike.*Jane*');
+    expect(contactSearchFilter('Jane')).toBe('name.ilike.*Jane*,wa_profile_name.ilike.*Jane*');
   });
 
   it('returns null for a search that sanitizes to nothing', () => {
@@ -210,10 +210,10 @@ describe('contactSearchFilter', () => {
   });
 
   it('strips PostgREST delimiters and ilike wildcards from the term', () => {
-    expect(contactSearchFilter('a,b)c(d*e%f')).toBe('name.ilike.*abcdef*');
+    expect(contactSearchFilter('a,b)c(d*e%f')).toBe('name.ilike.*abcdef*,wa_profile_name.ilike.*abcdef*');
   });
 
   it('escapes the single-character ilike wildcard', () => {
-    expect(contactSearchFilter('jane_doe')).toBe('name.ilike.*jane\\_doe*');
+    expect(contactSearchFilter('jane_doe')).toBe('name.ilike.*jane\\_doe*,wa_profile_name.ilike.*jane\\_doe*');
   });
 });

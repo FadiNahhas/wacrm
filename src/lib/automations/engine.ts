@@ -1,4 +1,3 @@
-import { isWithinTimeWindow } from './time-window'
 import type {
   Automation,
   AutomationLogStepResult,
@@ -1272,7 +1271,7 @@ async function evaluateCondition(cfg: ConditionStepConfig, args: ExecuteArgs): P
       return text.toLowerCase().includes(needle)
     }
     case 'time_of_day':
-      return isWithinTimeWindow(cfg.operand, new Date(), cfg.timezone)
+      return isWithinTimeWindow(cfg.operand ?? '', new Date(), cfg.timezone)
     default:
       return false
   }

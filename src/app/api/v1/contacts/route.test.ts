@@ -57,7 +57,7 @@ describe('GET /api/v1/contacts', () => {
     );
     expect(res.status).toBe(200);
     expect(mocks.orFilters).toContain(
-      'name.ilike.*+14155551234*,phone.ilike.*14155551234*'
+      'name.ilike.*+14155551234*,wa_profile_name.ilike.*+14155551234*,phone.ilike.*14155551234*'
     );
   });
 });

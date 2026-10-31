@@ -71,7 +71,7 @@ BEGIN
       ('api_keys', 'SIU', 'SU'),
       ('automation_logs', 'S', 'SIU'),
       ('automation_pending_executions', '', 'SIU'),
-      ('automation_steps', '', 'SID'),
+      ('automation_steps', '', 'SIUD'),
       ('automations', 'S', 'SIUD'),
       ('broadcast_recipients', 'SIU', 'SU'),
       ('broadcasts', 'SIUD', 'SU'),
@@ -88,7 +88,7 @@ BEGIN
       ('flows', 'S', 'SIUD'),
       ('member_presence', 'S', ''),
       ('message_reactions', 'SIUD', 'SIUD'),
-      ('message_templates', 'SIUD', 'SU'),
+      ('message_templates', 'SIUD', 'SIU'),
       ('messages', 'SI', 'SIU'),
       ('notifications', 'S', ''),
       ('pending_message_statuses', '', 'SID'),
@@ -96,7 +96,7 @@ BEGIN
       ('pipelines', 'SIUD', ''),
       ('profiles', 'SU', 'S'),
       ('quick_replies', 'S', 'SIUD'),
-      ('tags', 'SID', 'SI'),
+      ('tags', 'SID', 'SID'),
       ('webhook_endpoints', '', 'SIUD'),
       ('whatsapp_config', 'SIUD', 'SU')
   ) AS matrix(table_name, authenticated_ops, service_ops)

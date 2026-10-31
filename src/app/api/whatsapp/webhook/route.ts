@@ -6,7 +6,6 @@ import { mirrorInboundMedia } from '@/lib/whatsapp/mirror-inbound-media'
 import { normalizePhone } from '@/lib/whatsapp/phone-utils'
 import {
   hasUsableIdentity,
-  identityDisplayName,
   resolveInboundIdentity,
   type WaContactPayload,
   type WaIdentity,
