@@ -1,6 +1,7 @@
 import type { AutomationTriggerType } from '@/types'
 import { validateInteractivePayload } from '@/lib/whatsapp/interactive'
 import { isValidTimeZone, parseTimeWindow } from './time-window'
+import { isWebhookSecretRef, parseWebhookSecretRef } from './webhook-url'
 
 // ------------------------------------------------------------
 // Pre-flight config validation for automations about to be activated.
@@ -139,6 +140,15 @@ function validateOne(step: StepLike, path: string, issues: ValidationIssue[]): v
     case 'send_webhook':
       if (!nonEmpty(c.url)) {
         issues.push({ path: `${path}.url`, message: 'webhook URL is required' })
+        break
+      }
+      if (isWebhookSecretRef(String(c.url))) {
+        if (!parseWebhookSecretRef(String(c.url))) {
+          issues.push({
+            path: `${path}.url`,
+            message: 'secret reference must look like secret:name',
+          })
+        }
         break
       }
       try {

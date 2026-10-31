@@ -1542,6 +1542,7 @@ function StepEditor({
               onChange={(e) => set({ url: e.target.value })}
               className="bg-muted text-foreground"
             />
+            <p className="mt-1 text-xs text-muted-foreground">{t("config.urlSecretHint")}</p>
           </FieldBlock>
           <FieldBlock label={t("config.bodyTemplateLabel")}>
             <Textarea

@@ -1019,6 +1019,7 @@
         "placeholderContact": "이름 / 이메일 / 회사",
         "placeholderTag": "태그 id",
         "urlLabel": "URL",
+        "urlSecretHint": "자격 증명이 포함된 URL을 여기에 저장하는 대신 secret:이름 을 입력하면 서버 설정(AUTOMATION_WEBHOOK_URLS)에 저장된 URL을 호출합니다.",
         "headersLabel": "헤더",
         "placeholderHeaders": "{\"Authorization\": \"Bearer ...\"}",
         "bodyTemplateLabel": "본문 템플릿",

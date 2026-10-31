@@ -106,6 +106,18 @@ describe("validateStepsForActivation", () => {
     expect(garbage.map((i) => i.message)).toContain(
       "webhook URL is not a valid URL",
     );
+
+    const secretRef = validateStepsForActivation([
+      { step_type: "send_webhook", step_config: { url: "secret:support_discord" } },
+    ]);
+    expect(secretRef).toEqual([]);
+
+    const badSecretRef = validateStepsForActivation([
+      { step_type: "send_webhook", step_config: { url: "secret:a b" } },
+    ]);
+    expect(badSecretRef.map((i) => i.message)).toContain(
+      "secret reference must look like secret:name",
+    );
   });
 
   it("validates assign_conversation only when mode is 'specific'", () => {

@@ -26,6 +26,7 @@ import { engineSendText, engineSendTemplate, engineSendInteractive } from './met
 import { validateInteractivePayload } from '@/lib/whatsapp/interactive'
 import { isDeliverableUrl } from '@/lib/webhooks/ssrf'
 import { extractLabeledActivationKey } from './activation-key'
+import { resolveWebhookUrl } from './webhook-url'
 
 // ------------------------------------------------------------
 // Public API
@@ -633,11 +634,13 @@ async function runStep(step: AutomationStep, args: ExecuteArgs): Promise<string>
     case 'send_webhook': {
       const cfg = step.step_config as SendWebhookStepConfig
       if (!cfg.url) throw new Error('send_webhook needs url')
+      // `secret:<name>` resolves from server config scoped to this account.
+      const url = resolveWebhookUrl(cfg.url, args.automation.account_id)
       // SSRF guard: the URL and headers are account-controlled and the
       // server makes the request, so refuse any destination that resolves
       // to a private / loopback / link-local / reserved address. Mirrors
       // the webhook_endpoints delivery path (see lib/webhooks/deliver.ts).
-      if (!(await isDeliverableUrl(cfg.url))) {
+      if (!(await isDeliverableUrl(url))) {
         throw new Error('send_webhook: destination not allowed')
       }
       let bodyArgs = args
@@ -656,7 +659,7 @@ async function runStep(step: AutomationStep, args: ExecuteArgs): Promise<string>
         }
       }
       const body = cfg.body_template ? interpolate(cfg.body_template, bodyArgs) : JSON.stringify(args.context)
-      const res = await fetch(cfg.url, {
+      const res = await fetch(url, {
         method: 'POST',
         headers: { 'content-type': 'application/json', ...(cfg.headers ?? {}) },
         body,

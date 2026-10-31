@@ -1019,6 +1019,7 @@
         "placeholderContact": "name / email / company",
         "placeholderTag": "tag id",
         "urlLabel": "URL",
+        "urlSecretHint": "Use secret:name to call a URL kept in server config (AUTOMATION_WEBHOOK_URLS) instead of saving a credential-bearing URL here.",
         "headersLabel": "Headers",
         "placeholderHeaders": "{\"Authorization\": \"Bearer ...\"}",
         "bodyTemplateLabel": "Body template",
