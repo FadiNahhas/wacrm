@@ -30,5 +30,8 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules"]
+  // mcp-server is its own package (own package.json, tsconfig and
+  // dependencies); the root typecheck only resolved its SDK imports by
+  // accident of npm hoisting.
+  "exclude": ["node_modules", "mcp-server"]
 }
