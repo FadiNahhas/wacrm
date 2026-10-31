@@ -7,7 +7,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  /* Inter for Latin, IBM Plex Sans Arabic for Arabic script (per-glyph
+  /* Inter for Latin, Noto Sans Arabic for Arabic script (per-glyph
    * fallback — the Arabic face only covers the Arabic unicode-range). */
   --font-sans: var(--font-inter), var(--font-arabic), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono);
