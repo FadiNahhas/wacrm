@@ -20,7 +20,7 @@ describe('message direction is independent of interface language', () => {
       content_type, content_text: text, status: 'delivered', created_at: '2026-09-08T10:00:00Z',
     }
     const html = render(<MessageBubble message={message} />)
-    expect(html).toMatch(/<p dir="auto" class="message-text [^"]*">أهلًا/)
+    expect(html).toMatch(/<p dir="auto" class="message-text [^"]*">(?:<span>)?أهلًا/)
     expect(html).toContain('https://elainebooks.com')
     expect(html).toContain('Your code: AB-123.')
     // The message owns its direction, not the surrounding bubble or metadata.

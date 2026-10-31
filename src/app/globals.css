@@ -60,6 +60,10 @@
    * colour (accent) — see the MODE / ACCENT blocks below. */
   --color-bubble-in: var(--bubble-in);
   --color-read-receipt: var(--read-receipt);
+  --color-status-good: var(--status-good);
+  --color-status-warning: var(--status-warning);
+  --color-status-serious: var(--status-serious);
+  --color-status-critical: var(--status-critical);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -130,6 +134,10 @@ html[data-mode="dark"] {
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(0.28 0.01 260);
   --bubble-in: oklch(0.22 0.01 260);
+  --status-good: #0ca30c;
+  --status-warning: #fab219;
+  --status-serious: #ec835a;
+  --status-critical: #e05252;
 }
 
 html[data-mode="light"] {
@@ -166,6 +174,10 @@ html[data-mode="light"] {
   --sidebar-accent-foreground: oklch(0.22 0.012 260);
   --sidebar-border: oklch(0.86 0.006 260);
   --bubble-in: oklch(1 0 0);
+  --status-good: #0b7f0b;
+  --status-warning: #946100;
+  --status-serious: #c2532a;
+  --status-critical: #c43232;
 
   /* Status colours across the app (error text, warning banners, badge
    * labels…) are written as `text-<hue>-300/400`, tuned for the dark
@@ -290,6 +302,9 @@ html[data-theme="rose"] {
   }
   body {
     @apply bg-background text-foreground;
+  }
+  .recharts-cartesian-axis-tick-value {
+    fill: var(--muted-foreground);
   }
   html {
     @apply font-sans;

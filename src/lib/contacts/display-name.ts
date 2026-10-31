@@ -9,9 +9,11 @@
  *   - `wa_profile_name` — the contact's own WhatsApp profile name
  *                         (Meta calls it the "pushname"). Contact-owned,
  *                         rewritten on every inbound message.
- *   - `phone`           — always present, never pretty.
+ *   - `phone`           — never pretty, and '' for a username-only
+ *                         sender (migration 040), who is shown by
+ *                         `contactHandle` as @username or BSUID instead.
  *
- * Display order is name → wa_profile_name → phone, so a contact we have
+ * Display order is name → wa_profile_name → handle, so a contact we have
  * never manually named still reads sensibly in the inbox instead of
  * showing a bare number, while an operator-entered name always wins.
  *
@@ -20,11 +22,15 @@
  * skips `wa_profile_name` and makes un-named contacts look broken.
  */
 
+import { contactHandle } from "@/lib/whatsapp/wa-identity";
+
 /** The subset of a contact row any display surface needs. */
 export interface DisplayNameContact {
   name?: string | null;
   wa_profile_name?: string | null;
   phone?: string | null;
+  wa_username?: string | null;
+  wa_user_id?: string | null;
 }
 
 /**
@@ -44,7 +50,7 @@ export function contactDisplayName(
   return (
     contact?.name?.trim() ||
     contact?.wa_profile_name?.trim() ||
-    contact?.phone?.trim() ||
+    (contact ? contactHandle(contact).trim() : "") ||
     fallback
   );
 }
@@ -66,4 +72,5 @@ export function hasOperatorName(
  * into a PostgREST `.select()` string so adding a future name source
  * doesn't mean hunting down each call site.
  */
-export const CONTACT_DISPLAY_COLUMNS = "name, wa_profile_name, phone";
+export const CONTACT_DISPLAY_COLUMNS =
+  "name, wa_profile_name, phone, wa_username, wa_user_id";
