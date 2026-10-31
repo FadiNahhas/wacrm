@@ -48,6 +48,10 @@
   --color-primary-hover: var(--primary-hover);
   --color-primary-soft: var(--primary-soft);
   --color-primary-soft-2: var(--primary-soft-2);
+  /* Inbound chat bubble surface (mode) and the "read" double-tick
+   * colour (accent) — see the MODE / ACCENT blocks below. */
+  --color-bubble-in: var(--bubble-in);
+  --color-read-receipt: var(--read-receipt);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -69,7 +73,7 @@
  * tokens (background / card / border / muted / sidebar surfaces /
  * neutral charts / radius) live in the MODE blocks below; accent
  * tokens (--primary*, --ring, --chart-1, --sidebar-primary*,
- * --sidebar-ring) live in the ACCENT blocks. They set disjoint
+ * --sidebar-ring, --read-receipt) live in the ACCENT blocks. They set disjoint
  * variables, so cascade order between them doesn't matter.
  *
  * `:root` carries the dark-mode + violet defaults so a visitor
@@ -78,7 +82,10 @@
  *
  * The three `--primary-*` extras (hover / soft / soft-2) feed
  * hovered primary buttons and tinted-primary surfaces (sidebar
- * active pill, validation badges).
+ * active pill, validation badges). `--read-receipt` is the blue
+ * "read" double tick drawn ON the primary fill of outbound bubbles,
+ * so each accent picks a blue that contrasts with its own primary
+ * (deep blue on light fills, pale cyan on dark ones).
  *
  * Token shapes come straight from the design handoff at
  * project/Color Themes.html — change one, change the other.
@@ -114,35 +121,82 @@ html[data-mode="dark"] {
   --sidebar-accent: oklch(0.22 0.01 260);
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(0.28 0.01 260);
+  --bubble-in: oklch(0.22 0.01 260);
 }
 
 html[data-mode="light"] {
-  --background: oklch(0.99 0.002 260);
-  --foreground: oklch(0.21 0.01 260);
+  /* Light mode is built as grey canvas + white panels: the page, header
+   * and chat area sit on a visibly grey background so white cards, the
+   * conversation list and inbound bubbles separate from it. Borders and
+   * muted text are dark enough to read at a glance (muted-foreground is
+   * ~6:1 on white), rather than the near-white-on-white of a pure
+   * "paper" palette. */
+  --background: oklch(0.955 0.004 260);
+  --foreground: oklch(0.18 0.012 260);
   --card: oklch(1 0 0);
-  --card-2: oklch(0.985 0.002 260);
-  --card-foreground: oklch(0.21 0.01 260);
+  --card-2: oklch(0.975 0.003 260);
+  --card-foreground: oklch(0.18 0.012 260);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.21 0.01 260);
-  --secondary: oklch(0.967 0.003 260);
-  --secondary-foreground: oklch(0.25 0.01 260);
-  --muted: oklch(0.967 0.003 260);
-  --muted-foreground: oklch(0.52 0.015 260);
-  --accent: oklch(0.96 0.004 260);
-  --accent-foreground: oklch(0.25 0.01 260);
+  --popover-foreground: oklch(0.18 0.012 260);
+  --secondary: oklch(0.935 0.005 260);
+  --secondary-foreground: oklch(0.22 0.012 260);
+  --muted: oklch(0.94 0.005 260);
+  --muted-foreground: oklch(0.46 0.015 260);
+  --accent: oklch(0.925 0.006 260);
+  --accent-foreground: oklch(0.22 0.012 260);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0.004 260);
-  --input: oklch(0.922 0.004 260);
+  --border: oklch(0.86 0.006 260);
+  --input: oklch(0.84 0.006 260);
   --chart-2: oklch(0.6 0.1 260);
   --chart-3: oklch(0.7 0.06 260);
   --chart-4: oklch(0.8 0.04 260);
   --chart-5: oklch(0.87 0.03 260);
   --radius: 0.625rem;
-  --sidebar: oklch(0.985 0.002 260);
-  --sidebar-foreground: oklch(0.21 0.01 260);
-  --sidebar-accent: oklch(0.96 0.004 260);
-  --sidebar-accent-foreground: oklch(0.25 0.01 260);
-  --sidebar-border: oklch(0.922 0.004 260);
+  --sidebar: oklch(1 0 0);
+  --sidebar-foreground: oklch(0.18 0.012 260);
+  --sidebar-accent: oklch(0.935 0.006 260);
+  --sidebar-accent-foreground: oklch(0.22 0.012 260);
+  --sidebar-border: oklch(0.86 0.006 260);
+  --bubble-in: oklch(1 0 0);
+
+  /* Status colours across the app (error text, warning banners, badge
+   * labels…) are written as `text-<hue>-300/400`, tuned for the dark
+   * canvas — on white they wash out. Remap those two steps to the -700
+   * value in light mode so every one of those call sites gets readable
+   * contrast without per-component `dark:` variants. Values are copied
+   * from tailwindcss/theme.css. */
+  --color-red-300: oklch(50.5% 0.213 27.518);
+  --color-red-400: oklch(50.5% 0.213 27.518);
+  --color-orange-300: oklch(55.3% 0.195 38.402);
+  --color-orange-400: oklch(55.3% 0.195 38.402);
+  --color-amber-300: oklch(55.5% 0.163 48.998);
+  --color-amber-400: oklch(55.5% 0.163 48.998);
+  --color-yellow-300: oklch(55.4% 0.135 66.442);
+  --color-yellow-400: oklch(55.4% 0.135 66.442);
+  --color-lime-300: oklch(53.2% 0.157 131.589);
+  --color-lime-400: oklch(53.2% 0.157 131.589);
+  --color-green-300: oklch(52.7% 0.154 150.069);
+  --color-green-400: oklch(52.7% 0.154 150.069);
+  --color-emerald-300: oklch(50.8% 0.118 165.612);
+  --color-emerald-400: oklch(50.8% 0.118 165.612);
+  --color-teal-300: oklch(51.1% 0.096 186.391);
+  --color-teal-400: oklch(51.1% 0.096 186.391);
+  --color-cyan-300: oklch(52% 0.105 223.128);
+  --color-cyan-400: oklch(52% 0.105 223.128);
+  --color-sky-300: oklch(50% 0.134 242.749);
+  --color-sky-400: oklch(50% 0.134 242.749);
+  --color-blue-300: oklch(48.8% 0.243 264.376);
+  --color-blue-400: oklch(48.8% 0.243 264.376);
+  --color-indigo-300: oklch(45.7% 0.24 277.023);
+  --color-indigo-400: oklch(45.7% 0.24 277.023);
+  --color-violet-300: oklch(49.1% 0.27 292.581);
+  --color-violet-400: oklch(49.1% 0.27 292.581);
+  --color-purple-300: oklch(49.6% 0.265 301.924);
+  --color-purple-400: oklch(49.6% 0.265 301.924);
+  --color-pink-300: oklch(52.5% 0.223 3.958);
+  --color-pink-400: oklch(52.5% 0.223 3.958);
+  --color-rose-300: oklch(51.4% 0.222 16.935);
+  --color-rose-400: oklch(51.4% 0.222 16.935);
 }
 
 /* ---- ACCENT: primary color ---- */
@@ -159,6 +213,7 @@ html[data-theme="violet"] {
   --sidebar-primary: oklch(0.526 0.247 293);
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-ring: oklch(0.526 0.247 293);
+  --read-receipt: oklch(0.88 0.12 210);
 }
 
 html[data-theme="emerald"] {
@@ -173,6 +228,7 @@ html[data-theme="emerald"] {
   --sidebar-primary: oklch(0.62 0.16 162);
   --sidebar-primary-foreground: oklch(0.16 0.02 162);
   --sidebar-ring: oklch(0.62 0.16 162);
+  --read-receipt: oklch(0.42 0.23 262);
 }
 
 html[data-theme="cobalt"] {
@@ -187,6 +243,7 @@ html[data-theme="cobalt"] {
   --sidebar-primary: oklch(0.585 0.2 254);
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-ring: oklch(0.585 0.2 254);
+  --read-receipt: oklch(0.9 0.11 195);
 }
 
 html[data-theme="amber"] {
@@ -201,6 +258,7 @@ html[data-theme="amber"] {
   --sidebar-primary: oklch(0.745 0.16 65);
   --sidebar-primary-foreground: oklch(0.18 0.03 65);
   --sidebar-ring: oklch(0.745 0.16 65);
+  --read-receipt: oklch(0.42 0.23 262);
 }
 
 html[data-theme="rose"] {
@@ -215,6 +273,7 @@ html[data-theme="rose"] {
   --sidebar-primary: oklch(0.645 0.22 16);
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-ring: oklch(0.645 0.22 16);
+  --read-receipt: oklch(0.32 0.17 262);
 }
 
 @layer base {
