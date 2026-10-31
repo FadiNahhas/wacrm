@@ -957,7 +957,7 @@ export function MessageThread({
             {displayName.charAt(0).toUpperCase()}
           </div>
           <div className="min-w-0">
-            <h2 className="truncate text-sm font-semibold text-foreground">{displayName}</h2>
+            <h2 dir="auto" className="truncate text-sm font-semibold text-foreground">{displayName}</h2>
             <p className="truncate text-xs text-muted-foreground">{contact.phone}</p>
             {priorityCustomFields.length > 0 && (
               <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">

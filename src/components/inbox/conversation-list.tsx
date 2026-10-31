@@ -99,7 +99,9 @@ export function ConversationList({
       const { data, error } = await supabase
         .from("conversations")
         .select(CONVERSATION_SELECT)
-        .order("last_message_at", { ascending: false });
+        // Postgres sorts NULLs first under DESC; conversations with no
+        // messages yet (e.g. a first send Meta rejected) belong at the bottom.
+        .order("last_message_at", { ascending: false, nullsFirst: false });
 
       if (cancelled) return;
 
@@ -238,6 +240,7 @@ export function ConversationList({
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
+            dir="auto"
             value={search}
             onChange={handleSearchChange}
             placeholder={t("searchPlaceholder")}
@@ -489,7 +492,7 @@ function ConversationItem({
           <span className="shrink-0 text-[10px] text-muted-foreground">{timeAgo}</span>
         </div>
         <div className="mt-0.5 flex items-center justify-between gap-2">
-          <p dir="auto" className="message-text min-w-0 flex-1 truncate text-xs text-muted-foreground">
+          <p dir="auto" className="message-text min-w-0 flex-1 truncate text-[13px] text-muted-foreground">
             {conversation.last_message_text || t("noMessagesYet")}
           </p>
           <div className="flex shrink-0 items-center gap-1.5">

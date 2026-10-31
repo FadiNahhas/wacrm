@@ -36,7 +36,7 @@ export function InteractivePreview({
             <BidiText>{payload.header}</BidiText>
           </p>
         ) : null}
-        <p dir="auto" className="message-text whitespace-pre-wrap break-words text-sm">
+        <p dir="auto" className="message-text whitespace-pre-wrap break-words text-message">
           {payload.body ? <BidiText>{payload.body}</BidiText> : (
             <span className="text-muted-foreground">Message body…</span>
           )}

@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
-import { Inter } from "next/font/google";
+import { IBM_Plex_Sans_Arabic, Inter } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 import { ThemeProvider } from "@/hooks/use-theme";
@@ -16,8 +16,21 @@ import {
 } from "@/lib/themes";
 
 const inter = Inter({
-  variable: "--font-sans",
+  variable: "--font-inter",
   subsets: ["latin"],
+});
+
+// Conversations are mostly Arabic while the UI stays in English. Inter
+// has no Arabic glyphs, so Arabic text used to fall back to whatever the
+// OS had (often a cramped Naskh). IBM Plex Sans Arabic is drawn to sit
+// next to a Latin grotesk, with open counters that stay legible at chat
+// sizes. Only the `arabic` subset is loaded: its unicode-range covers the
+// Arabic block, so Latin text keeps rendering in Inter (see --font-sans
+// in globals.css).
+const plexArabic = IBM_Plex_Sans_Arabic({
+  variable: "--font-arabic",
+  subsets: ["arabic"],
+  weight: ["400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -90,7 +103,7 @@ export default async function RootLayout({
       lang={locale}
       data-theme={DEFAULT_THEME}
       data-mode={DEFAULT_MODE}
-      className={`${inter.variable} h-full antialiased`}
+      className={`${inter.variable} ${plexArabic.variable} h-full antialiased`}
       // The `theme-boot` script below rewrites `data-theme` and
       // `data-mode` on <html> from localStorage before React hydrates,
       // so for any non-default choice the client DOM intentionally

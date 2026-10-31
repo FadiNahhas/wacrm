@@ -10,6 +10,16 @@ describe('extractLabeledActivationKey', () => {
     expect(extractLabeledActivationKey(message)).toBe(key)
   })
 
+  it('ignores direction marks WhatsApp inserts around the key', () => {
+    expect(extractLabeledActivationKey('مفتاح التفعيل:‎2IH2U1‏')).toBe('2IH2U1')
+    expect(extractLabeledActivationKey('مفتاح التفعيل: ⁦3BBS5K⁩')).toBe('3BBS5K')
+  })
+
+  it('accepts a hand-typed key without the colon when it contains a digit', () => {
+    expect(extractLabeledActivationKey('مفتاح التفعيل 2IH2U1 لو سمحت')).toBe('2IH2U1')
+    expect(extractLabeledActivationKey('activation key doesnt work')).toBeNull()
+  })
+
   it('does not mistake an unrelated number for a key', () => {
     expect(extractLabeledActivationKey('Call me at 0521234567')).toBeNull()
   })

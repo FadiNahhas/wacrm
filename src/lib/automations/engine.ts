@@ -685,6 +685,16 @@ async function runStep(step: AutomationStep, args: ExecuteArgs): Promise<string>
   }
 }
 
+// How far back the activation-key lookup reads. It used to stop at the
+// last 24 h / 50 text messages, which missed the key whenever the
+// customer pasted the support-link message the day before, or a flow
+// exchange pushed it out of the window — the alert then said "not
+// found". Keys are only read from labelled support-link messages and
+// the newest wins, so a wider window can't pick a stale unlabelled
+// code; it only finds keys the old window dropped.
+const ACTIVATION_KEY_LOOKBACK_DAYS = 30
+const ACTIVATION_KEY_LOOKBACK_MESSAGES = 500
+
 async function recentActivationKey(args: ExecuteArgs): Promise<string | null> {
   if (!args.contactId || !args.context.conversation_id) return null
   const db = supabaseAdmin()
@@ -703,10 +713,15 @@ async function recentActivationKey(args: ExecuteArgs): Promise<string | null> {
     .select('content_text')
     .eq('conversation_id', conversation.id)
     .eq('sender_type', 'customer')
-    .eq('content_type', 'text')
-    .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+    // Any type with text: the key also arrives as an image/document
+    // caption when the customer attaches a screenshot to the message.
+    .not('content_text', 'is', null)
+    .gte(
+      'created_at',
+      new Date(Date.now() - ACTIVATION_KEY_LOOKBACK_DAYS * 24 * 60 * 60 * 1000).toISOString(),
+    )
     .order('created_at', { ascending: false })
-    .limit(50)
+    .limit(ACTIVATION_KEY_LOOKBACK_MESSAGES)
   if (messagesError) throw new Error(`activation key message lookup failed: ${messagesError.message}`)
   for (const message of messages ?? []) {
     const key = extractLabeledActivationKey(message.content_text ?? '')

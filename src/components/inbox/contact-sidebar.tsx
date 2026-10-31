@@ -171,7 +171,7 @@ export function ContactSidebar({
                 initials
               )}
             </div>
-            <h3 className="mt-3 text-sm font-semibold text-foreground">
+            <h3 dir="auto" className="mt-3 text-sm font-semibold text-foreground">
               {displayName}
             </h3>
             {contact.company && (
@@ -330,11 +330,12 @@ export function ContactSidebar({
             <div className="mt-2">
               <div className="flex gap-2">
                 <textarea
+                  dir="auto"
                   value={newNote}
                   onChange={(e) => setNewNote(e.target.value)}
                   placeholder={tSidebar("addNotePlaceholder")}
                   rows={2}
-                  className="flex-1 resize-none rounded-lg border border-border bg-muted px-3 py-2 text-xs text-foreground placeholder-muted-foreground outline-none focus:border-primary/50"
+                  className="message-text flex-1 resize-none rounded-lg border border-border bg-muted px-3 py-2 text-xs text-foreground placeholder-muted-foreground outline-none focus:border-primary/50"
                 />
                 <Button
                   size="sm"
@@ -352,7 +353,7 @@ export function ContactSidebar({
                     key={note.id}
                     className="rounded-lg bg-muted px-3 py-2"
                   >
-                    <p className="whitespace-pre-wrap text-xs text-muted-foreground">
+                    <p dir="auto" className="message-text whitespace-pre-wrap text-xs text-muted-foreground">
                       {note.note_text}
                     </p>
                     <p className="mt-1 text-[10px] text-muted-foreground">

@@ -7,7 +7,9 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
+  /* Inter for Latin, IBM Plex Sans Arabic for Arabic script (per-glyph
+   * fallback — the Arabic face only covers the Arabic unicode-range). */
+  --font-sans: var(--font-inter), var(--font-arabic), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -44,6 +46,10 @@
    * already exist per-accent below; these mappings expose them (and
    * --card-2) as Tailwind utilities: bg-card-2, bg-primary-soft,
    * bg-primary-soft-2, hover:bg-primary-hover. */
+  /* Chat message body text: a step above text-sm with roomier leading,
+   * which Arabic's taller ascenders/descenders and dots need. */
+  --text-message: 0.9375rem;
+  --text-message--line-height: 1.65;
   --color-card-2: var(--card-2);
   --color-primary-hover: var(--primary-hover);
   --color-primary-soft: var(--primary-soft);

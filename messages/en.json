@@ -232,7 +232,10 @@
       "downloadFailed": "Couldn't download the attachment",
       "viewImage": "View image",
       "expandVideo": "Expand video",
-      "imageAlt": "Shared image"
+      "imageAlt": "Shared image",
+      "copyKey": "Copy activation key {key}",
+      "keyCopied": "Activation key {key} copied",
+      "copyKeyFailed": "Couldn't copy the key"
     },
     "mediaViewer": {
       "counter": "{index} of {total}",

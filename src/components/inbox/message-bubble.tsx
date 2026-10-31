@@ -26,6 +26,9 @@ import {
 } from "./message-media";
 import { InteractivePreview } from "@/components/interactive/interactive-preview";
 import { useTranslations } from "next-intl";
+import { useMemo } from "react";
+import { extractLabeledActivationKey } from "@/lib/automations/activation-key";
+import { ActivationKeyCopy } from "./activation-key-copy";
 
 interface MessageBubbleProps {
   message: Message;
@@ -100,7 +103,7 @@ function MessageContent({
   switch (message.content_type) {
     case "text":
       return (
-        <p dir="auto" className="message-text whitespace-pre-wrap break-words text-sm">
+        <p dir="auto" className="message-text whitespace-pre-wrap break-words text-message">
           <BidiText>{message.content_text ?? ""}</BidiText>
         </p>
       );
@@ -114,7 +117,7 @@ function MessageContent({
             <MediaUnavailable label={t("photo")} t={t} />
           )}
           {message.content_text && (
-            <p dir="auto" className="message-text mt-1 whitespace-pre-wrap break-words text-sm">
+            <p dir="auto" className="message-text mt-1 whitespace-pre-wrap break-words text-message">
               <BidiText>{message.content_text ?? ""}</BidiText>
             </p>
           )}
@@ -130,7 +133,7 @@ function MessageContent({
             <MediaUnavailable label={t("video")} t={t} />
           )}
           {message.content_text && (
-            <p dir="auto" className="message-text mt-1 whitespace-pre-wrap break-words text-sm">
+            <p dir="auto" className="message-text mt-1 whitespace-pre-wrap break-words text-message">
               <BidiText>{message.content_text ?? ""}</BidiText>
             </p>
           )}
@@ -176,12 +179,12 @@ function MessageContent({
             {t("template")}
           </span>
           {message.content_text ? (
-            <p dir="auto" className="message-text mt-1 whitespace-pre-wrap break-words text-sm">
+            <p dir="auto" className="message-text mt-1 whitespace-pre-wrap break-words text-message">
               <BidiText>{message.content_text ?? ""}</BidiText>
             </p>
           ) : (
             message.template_name && (
-              <p dir="auto" className="message-text mt-1 break-words text-sm italic opacity-80">
+              <p dir="auto" className="message-text mt-1 break-words text-message italic opacity-80">
                 {message.template_name}
               </p>
             )
@@ -217,14 +220,14 @@ function MessageContent({
               <CornerDownLeft className="h-3 w-3" />
               {t("buttonReply")}
             </span>
-            <p dir="auto" className="message-text whitespace-pre-wrap break-words text-sm">
+            <p dir="auto" className="message-text whitespace-pre-wrap break-words text-message">
               <BidiText>{message.content_text || t("interactiveReply")}</BidiText>
             </p>
           </div>
         );
       }
       return (
-        <p dir="auto" className="message-text whitespace-pre-wrap break-words text-sm">
+        <p dir="auto" className="message-text whitespace-pre-wrap break-words text-message">
           <BidiText>{message.content_text || t("interactiveReply")}</BidiText>
         </p>
       );
@@ -232,7 +235,7 @@ function MessageContent({
 
     default:
       return (
-        <p dir="auto" className="message-text whitespace-pre-wrap break-words text-sm">
+        <p dir="auto" className="message-text whitespace-pre-wrap break-words text-message">
           <BidiText>{message.content_text || t("unsupported")}</BidiText>
         </p>
       );
@@ -251,6 +254,12 @@ export function MessageBubble({
 
   const isAgent = message.sender_type === "agent" || message.sender_type === "bot";
   const time = format(new Date(message.created_at), "HH:mm");
+  // Same labelled-key parser the Discord activation alert uses, so the
+  // copy pill appears on exactly the messages that alert would read.
+  const activationKey = useMemo(
+    () => extractLabeledActivationKey(message.content_text ?? ""),
+    [message.content_text],
+  );
 
   // Row alignment + width cap are owned by <MessageActions> so its hover
   // group matches the bubble's content area, not the full row.
@@ -316,6 +325,7 @@ export function MessageBubble({
           {isAgent && <StatusIcon status={message.status} />}
         </div>
       </div>
+      {activationKey && <ActivationKeyCopy activationKey={activationKey} />}
       {reactions && reactions.length > 0 && onToggleReaction && (
         <MessageReactions
           reactions={reactions}
