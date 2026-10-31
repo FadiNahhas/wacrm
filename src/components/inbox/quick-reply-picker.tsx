@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { Loader2, MessageSquare, Zap } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { createClient } from "@/lib/supabase/client";
 import type { QuickReply } from "@/types";
 import { interactivePayloadPreviewText } from "@/lib/whatsapp/interactive";
 
@@ -17,6 +18,65 @@ interface QuickReplyPickerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onPick: (qr: QuickReply) => void;
+}
+
+/*
+ * Tab-wide quick-reply cache (stale-while-revalidate).
+ *
+ * The picker used to start from an empty list and hit /api/quick-replies
+ * on every open — browser → Next route → auth.getUser + profile lookup →
+ * the query itself, all behind a spinner. Now:
+ *   - the list is read straight from Supabase in the browser (RLS policy
+ *     quick_replies_select already scopes it to the account, exactly as
+ *     the GET route relied on), so it's a single round trip;
+ *   - it's warmed when the composer mounts, so the first open is usually
+ *     instant;
+ *   - later opens render the cached list immediately and refresh it in
+ *     the background, so edits made in Settings still show up.
+ */
+let cachedQuickReplies: QuickReply[] | null = null;
+let inflight: Promise<void> | null = null;
+const listeners = new Set<() => void>();
+
+function subscribe(listener: () => void) {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+const getSnapshot = () => cachedQuickReplies;
+const getServerSnapshot = () => null;
+
+/** Fetch the account's quick replies into the shared cache. Concurrent
+ *  calls share one request. */
+export function refreshQuickReplies(): Promise<void> {
+  if (inflight) return inflight;
+  inflight = (async () => {
+    try {
+      const { data, error } = await createClient()
+        .from("quick_replies")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) {
+        console.error("Failed to load quick replies:", {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code,
+        });
+        // Keep whatever we had; a first-load failure shows the empty
+        // state rather than spinning forever.
+        cachedQuickReplies ??= [];
+      } else {
+        cachedQuickReplies = (data ?? []) as QuickReply[];
+      }
+      listeners.forEach((l) => l());
+    } finally {
+      inflight = null;
+    }
+  })();
+  return inflight;
 }
 
 /**
@@ -30,27 +90,16 @@ export function QuickReplyPicker({
   onPick,
 }: QuickReplyPickerProps) {
   const t = useTranslations("Inbox.composer");
-  const [items, setItems] = useState<QuickReply[]>([]);
-  const [loading, setLoading] = useState(false);
+  const items = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
+  // Warm the cache as soon as a composer is on screen.
   useEffect(() => {
-    if (!open) return;
-    let cancelled = false;
-    setLoading(true);
-    void (async () => {
-      try {
-        const res = await fetch("/api/quick-replies", { cache: "no-store" });
-        const data = await res.json().catch(() => ({}));
-        if (!cancelled && res.ok) {
-          setItems((data.quick_replies as QuickReply[]) ?? []);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+    if (cachedQuickReplies === null) void refreshQuickReplies();
+  }, []);
+
+  // Revalidate on every open; the cached list renders meanwhile.
+  useEffect(() => {
+    if (open) void refreshQuickReplies();
   }, [open]);
 
   return (
@@ -60,7 +109,7 @@ export function QuickReplyPicker({
           <DialogTitle>{t("quickReplies")}</DialogTitle>
         </DialogHeader>
         <div className="max-h-[60vh] overflow-y-auto">
-          {loading ? (
+          {items === null ? (
             <div className="flex justify-center py-8">
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>

@@ -54,7 +54,7 @@ import {
 } from "@/components/interactive/interactive-builder";
 import { validateInteractivePayload } from "@/lib/whatsapp/interactive";
 import type { InteractiveMessagePayload, QuickReply } from "@/types";
-import { QuickReplyPicker } from "./quick-reply-picker";
+import { QuickReplyPicker, refreshQuickReplies } from "./quick-reply-picker";
 
 /** Media content types an agent can send from the composer. */
 export type ComposerMediaKind = "image" | "video" | "document" | "audio";
@@ -347,6 +347,7 @@ export function MessageComposer({
         return;
       }
       toast.success(t("quickReplySaved"));
+      void refreshQuickReplies();
     } catch {
       toast.error(t("quickReplySaveError"));
     } finally {

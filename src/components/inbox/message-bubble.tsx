@@ -40,18 +40,40 @@ interface MessageBubbleProps {
   onOpenMedia?: (messageId: string) => void;
 }
 
+// Only rendered on outbound bubbles, i.e. on the primary fill — so the
+// neutral ticks use a faded primary-foreground tint (a step lighter than
+// the timestamp, so they never pass for "read"), and "read" uses the
+// accent-aware --read-receipt blue (a fixed blue-400 vanished against
+// several accents). The ticks are drawn a touch larger and heavier than
+// the old 12px / 2px so the delivered → read change is visible at a
+// glance.
 function StatusIcon({ status }: { status: Message["status"] }) {
   switch (status) {
     case "sending":
-      return <Clock className="h-3 w-3 text-muted-foreground" />;
+      return <Clock className="h-3 w-3 shrink-0 text-primary-foreground/60" />;
     case "sent":
-      return <Check className="h-3 w-3 text-muted-foreground" />;
+      return (
+        <Check
+          className="h-3.5 w-3.5 shrink-0 text-primary-foreground/60"
+          strokeWidth={2.5}
+        />
+      );
     case "delivered":
-      return <CheckCheck className="h-3 w-3 text-muted-foreground" />;
+      return (
+        <CheckCheck
+          className="h-3.5 w-3.5 shrink-0 text-primary-foreground/60"
+          strokeWidth={2.5}
+        />
+      );
     case "read":
-      return <CheckCheck className="h-3 w-3 text-blue-400" />;
+      return (
+        <CheckCheck
+          className="h-3.5 w-3.5 shrink-0 text-read-receipt"
+          strokeWidth={2.75}
+        />
+      );
     case "failed":
-      return <XCircle className="h-3 w-3 text-red-400" />;
+      return <XCircle className="h-3.5 w-3.5 shrink-0 text-red-400" />;
     default:
       return null;
   }
@@ -242,7 +264,7 @@ export function MessageBubble({
           "relative rounded-2xl px-3 py-2",
           isAgent
             ? "rounded-br-md bg-primary text-primary-foreground"
-            : "rounded-bl-md bg-muted text-foreground",
+            : "rounded-bl-md bg-bubble-in text-foreground shadow-xs",
         )}
       >
         {reply && (
