@@ -38,6 +38,7 @@ DECLARE
     'message_templates',
     'messages',
     'notifications',
+    'pending_message_statuses',
     'pipeline_stages',
     'pipelines',
     'profiles',
@@ -90,6 +91,7 @@ BEGIN
       ('message_templates', 'SIUD', 'SU'),
       ('messages', 'SI', 'SIU'),
       ('notifications', 'S', ''),
+      ('pending_message_statuses', '', 'SID'),
       ('pipeline_stages', 'SIUD', ''),
       ('pipelines', 'SIUD', ''),
       ('profiles', 'SU', 'S'),
@@ -137,6 +139,6 @@ BEGIN
     RAISE EXCEPTION 'notifications must retain exactly UPDATE(read_at) for authenticated';
   END IF;
 
-  RAISE NOTICE 'Data API table privilege matrix passed (36 tables, 3 roles).';
+  RAISE NOTICE 'Data API table privilege matrix passed (37 tables, 3 roles).';
 END
 $verify$;
