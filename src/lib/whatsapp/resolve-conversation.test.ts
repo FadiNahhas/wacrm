@@ -6,15 +6,15 @@ import { SendMessageError } from './send-message';
 
 // ------------------------------------------------------------
 // Chainable Supabase stub, scripted per table. Terminal methods
-// (like/maybeSingle/single) resolve to configured data; the builder
+// (maybeSingle/single) resolve to configured data; the builder
 // itself is thenable so an awaited `update().eq()` resolves cleanly.
 // ------------------------------------------------------------
 type ContactRow = { id: string; phone: string; name?: string | null };
 
 interface Script {
   config?: { user_id: string } | null; // whatsapp_config.maybeSingle
-  contactCandidates?: ContactRow[]; // contacts .like (same every call)
-  /** Per-call `.like` results — overrides contactCandidates. Lets a
+  contactCandidates?: ContactRow[];
+  /** Per-call results — overrides contactCandidates. Lets a
    *  test simulate "miss, then hit" for the unique-race path. */
   contactCandidatesByCall?: ContactRow[][];
   insertedContactId?: string; // contacts insert -> single
@@ -32,12 +32,13 @@ interface Script {
   contactUpdateSink?: Record<string, unknown>[];
   /** Test-supplied sink for `contacts` insert rows. */
   contactInsertSink?: Record<string, unknown>[];
+  updatedTables?: string[];
 }
 
 function makeDb(script: Script): SupabaseClient {
   let table = '';
   let mode: 'select' | 'insert' | 'update' = 'select';
-  let likeCalls = 0;
+  let contactLookupCalls = 0;
   let convLookupCalls = 0;
 
   const builder: Record<string, unknown> = {
@@ -50,6 +51,7 @@ function makeDb(script: Script): SupabaseClient {
     update: (patch: Record<string, unknown>) => {
       mode = 'update';
       if (table === 'contacts') script.contactUpdateSink?.push(patch);
+      script.updatedTables?.push(table);
       return builder;
     },
     eq: () => builder,
@@ -65,11 +67,11 @@ function makeDb(script: Script): SupabaseClient {
       }
       return Promise.resolve({ data: [], error: null });
     },
-    like: () => {
+    in: () => {
       const data = script.contactCandidatesByCall
-        ? (script.contactCandidatesByCall[likeCalls] ?? [])
+        ? (script.contactCandidatesByCall[contactLookupCalls] ?? [])
         : (script.contactCandidates ?? []);
-      likeCalls++;
+      contactLookupCalls++;
       return Promise.resolve({ data, error: null });
     },
     maybeSingle: () => {
@@ -128,6 +130,24 @@ describe('resolveConversationByPhone', () => {
     ).rejects.toBeInstanceOf(SendMessageError);
   });
 
+  it('rejects a national-format number (no leading +) before any DB call (#586)', async () => {
+    const db = {
+      from() {
+        throw new Error('should not query');
+      },
+    } as unknown as SupabaseClient;
+    // Would otherwise be sent to +41 55 555 12 12 (Switzerland) and
+    // reported as a successful send.
+    await expect(
+      resolveConversationByPhone(db, 'acct', '4155551212')
+    ).rejects.toMatchObject({ code: 'bad_request', status: 400 });
+    // Digits with a country code but no `+` are indistinguishable from
+    // the above, so they are refused as well.
+    await expect(
+      resolveConversationByPhone(db, 'acct', '14155550123')
+    ).rejects.toMatchObject({ code: 'bad_request', status: 400 });
+  });
+
   it('fails with whatsapp_not_configured when no config owner exists', async () => {
     const db = makeDb({ config: null });
     await resolveConversationByPhone(db, 'acct', '+14155550123').catch(
@@ -156,6 +176,7 @@ describe('resolveConversationByPhone', () => {
       conversationId: 'cv1',
       contactId: 'c1',
       contactCreated: false,
+      conversationCreated: false,
     });
   });
 
@@ -177,6 +198,41 @@ describe('resolveConversationByPhone', () => {
       conversationId: 'cv2',
       contactId: 'c2',
       contactCreated: true,
+      conversationCreated: true,
+    });
+  });
+
+  it('never renames an existing contact when a name is passed', async () => {
+    const updatedTables: string[] = [];
+    const db = makeDb({
+      config: { user_id: 'owner-1' },
+      contactCandidates: [{ id: 'c1', phone: '14155550123', name: 'Jane Doe' }],
+      existingConversation: { id: 'cv1' },
+      updatedTables,
+    });
+    const res = await resolveConversationByPhone(
+      db,
+      'acct',
+      '+14155550123',
+      'Somebody Else'
+    );
+    expect(res.contactId).toBe('c1');
+    expect(updatedTables).toEqual([]);
+  });
+
+  it('reports a newly created conversation for an existing contact', async () => {
+    const db = makeDb({
+      config: { user_id: 'owner-1' },
+      contactCandidates: [{ id: 'c1', phone: '14155550123' }],
+      existingConversation: null,
+      insertedConversationId: 'cv-new',
+    });
+    const res = await resolveConversationByPhone(db, 'acct', '+14155550123');
+    expect(res).toEqual({
+      conversationId: 'cv-new',
+      contactId: 'c1',
+      contactCreated: false,
+      conversationCreated: true,
     });
   });
 
@@ -194,6 +250,7 @@ describe('resolveConversationByPhone', () => {
     expect(res.contactId).toBe('c-raced');
     expect(res.contactCreated).toBe(false);
     expect(res.conversationId).toBe('cv-raced');
+    expect(res.conversationCreated).toBe(false);
   });
 
   it('re-resolves the conversation when the insert loses a unique race', async () => {
@@ -212,6 +269,7 @@ describe('resolveConversationByPhone', () => {
       conversationId: 'cv-raced',
       contactId: 'c1',
       contactCreated: false,
+      conversationCreated: false,
     });
   });
 });

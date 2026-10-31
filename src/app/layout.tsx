@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { NextIntlClientProvider } from 'next-intl';
-import { getLocale, getMessages } from 'next-intl/server';
+import { getLocale, getMessages, getTranslations } from 'next-intl/server';
 import { Inter, Noto_Sans_Arabic } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
@@ -54,12 +54,19 @@ function fontStack(...fonts: { style: { fontFamily: string } }[]) {
 }
 const FONT_STACK = fontStack(inter, notoArabic);
 
-export const metadata: Metadata = {
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("Metadata");
+  return {
+    ...metadata,
+    description: t("description"),
+  };
+}
+
+const metadata: Metadata = {
   title: {
     default: "wacrm",
     template: "%s — wacrm",
   },
-  description: "Self-hostable CRM template for WhatsApp.",
   robots: {
     index: false,
     follow: false,

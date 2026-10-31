@@ -24,6 +24,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { CustomFieldValue } from "./custom-field-value";
 import { format } from "date-fns";
 import { useTranslations } from "next-intl";
+import { contactHandle } from "@/lib/whatsapp/wa-identity";
 
 interface ContactSidebarProps {
   contact: Contact | null;
@@ -105,8 +106,11 @@ export function ContactSidebar({
   }, [fetchContactData]);
 
   const handleCopyPhone = useCallback(async () => {
-    if (!contact?.phone) return;
-    await navigator.clipboard.writeText(contact.phone);
+    // Copies whatever the row displays — a BSUID-only contact has no
+    // phone number to copy, but its @username still identifies them.
+    const handle = contact ? contactHandle(contact) : '';
+    if (!handle) return;
+    await navigator.clipboard.writeText(handle);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
     // Dep is the whole `contact` object (not `contact?.phone`) so the
@@ -186,7 +190,9 @@ export function ContactSidebar({
               className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted"
             >
               <Phone className="h-4 w-4 text-muted-foreground" />
-              <span className="flex-1 text-left">{contact.phone}</span>
+              <span className="flex-1 text-left">
+                {contactHandle(contact)}
+              </span>
               {copied ? (
                 <Check className="h-3 w-3 text-primary" />
               ) : (
