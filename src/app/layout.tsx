@@ -27,11 +27,32 @@ const inter = Inter({
 // first, rendered noticeably smaller) with open, even strokes that stay
 // legible at chat sizes. Only the `arabic` subset is loaded: its
 // unicode-range covers the Arabic block, so Latin text keeps rendering
-// in Inter (see --font-sans in globals.css).
+// in Inter.
 const notoArabic = Noto_Sans_Arabic({
   variable: "--font-arabic",
   subsets: ["arabic"],
 });
+
+/**
+ * The page font stack, exposed as --font-stack (see --font-sans in
+ * globals.css). Each next/font family is "'Face', 'Face Fallback'", and
+ * the generated fallback faces are local(Arial) with NO unicode-range.
+ * Chaining the two variables as-is put "Inter Fallback" ahead of the
+ * Arabic face — Windows Arial has Arabic glyphs, so it claimed every
+ * Arabic character and Noto Sans Arabic never rendered (chats showed
+ * thin, size-adjusted Arial). Both real faces therefore go first, then
+ * the metric-matched fallbacks. (`adjustFontFallback: false` would drop
+ * the fallback, but Turbopack still emits it.)
+ */
+function fontStack(...fonts: { style: { fontFamily: string } }[]) {
+  const families = fonts.map((f) =>
+    f.style.fontFamily.split(",").map((name) => name.trim()),
+  );
+  const faces = families.map(([face]) => face);
+  const fallbacks = families.flatMap(([, ...rest]) => rest);
+  return [...faces, ...fallbacks].join(", ");
+}
+const FONT_STACK = fontStack(inter, notoArabic);
 
 export const metadata: Metadata = {
   title: {
@@ -104,6 +125,7 @@ export default async function RootLayout({
       data-theme={DEFAULT_THEME}
       data-mode={DEFAULT_MODE}
       className={`${inter.variable} ${notoArabic.variable} h-full antialiased`}
+      style={{ "--font-stack": FONT_STACK } as React.CSSProperties}
       // The `theme-boot` script below rewrites `data-theme` and
       // `data-mode` on <html> from localStorage before React hydrates,
       // so for any non-default choice the client DOM intentionally
